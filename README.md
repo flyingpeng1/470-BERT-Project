@@ -1,3 +1,11 @@
+# Unnamed BERT Quizbowl System
+
+This documentation is not complete, and needs to be worked on.
+The reference system documentations oulines basic commands.
+- Jack
+
+# Reference System Documentation
+
 This is a simple, baseline system that does well on the question answering task "quiz bowl".  This system generates the baseline score on our leaderboard and demonstrates the IO profile we expect of Docker container submission.
 
 
