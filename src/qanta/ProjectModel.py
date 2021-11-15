@@ -15,70 +15,95 @@ import numpy as np
 from transformers import BertTokenizer
 from transformers import BertModel
 from transformers import BertConfig
+from transformers import AdamW
+
+from ProjectDataLoader import Project_BERT_Data_Manager
 
 
+# The actual model - currently unnamed
 class BERTTest(nn.Module):
-    def __init__(self):
-        """
-        Initialize the parameters you'll need for the model.
-        :param num_features: The number of features in the linear model
-        """
-        super(BERTTest, self).__init__()
 
+    # Initialize the parameters you'll need for the model.
+    def __init__(self, max_answer_length):    
+        super(BERTTest, self).__init__()
         config = BertConfig()
         self.bert = BertModel(config)
+        self.linear_output = nn.Linear(768, max_answer_length)
 
+
+    # computes output vector using pooled BERT output
     def forward(self, x):
-        """
-        Compute the model prediction for an example.
-        :param x: Example to evaluate
-        """
-        return self.bert(x)
+        return self.linear_output(self.bert(x).pooler_output)
 
-
+    # Use cosine similarity with answer tensors?
     def evaluate(self, data):
-        """
-        Computes the accuracy of the model. 
-        """
+        # TODO
 
-        # No need to modify this function.
         with torch.no_grad():
-            y_predicted = self(data.feature)
-            y_predicted_cls = y_predicted.round()
-            acc = y_predicted_cls.eq(data.label).sum() / float(data.label.shape[0])
-            return acc
-
-def step(epoch, ex, model, optimizer, criterion, inputs, labels, vocab=[]):
-    """
-    :param epoch: The current epoch
-    :param ex: Which example / minibatch you're one
-    :param model: The model you're optimizing
-    :param inputs: The current set of inputs
-    :param labels: The labels for those inputs
-    """
+            return 0
 
 
-    prediction = model(inputs)
-    optimizer.zero_grad()
-    print(prediction.last_hidden_state.size())
-    #loss = criterion(prediction, labels)
-    #loss.backward()
-    #optimizer.step()
+# This will handle the training and evaluating of the model.
+# This will help abstract the process out of the web server.
+class BERTAgent():
 
-    # used for selecting the most important features (again) - only tested to work with batch size 1
-    #if (loss.item() < 0.5 and len(vocab) > 0 and epoch > 2):
-    #    weights = model.linear.weight[0]
-    #    for i in range(0, len(weights)):
-    #        feature = vocab[i]
-    #        abs_weight_in_prediction = abs(weights[i].item() * inputs[0][i].item())
-    #        if (feature in features_dict):
-    #            features_dict[feature] = (features_dict[feature][1] + abs_weight_in_prediction , features_dict[feature][1] + 1)
-    #        else:
-    #            features_dict[feature] = (abs_weight_in_prediction, 1)
+    def __init__(self, model):
+        self.model = model
+        self.loss_fn = nn.MSELoss()
+        self.optimizer = AdamW(model.parameters())
+        self.total_examples = 0
 
-    if (ex+1) % 100 == 0:
-      acc_train = model.evaluate(train)
-      acc_test = model.evaluate(test)
-      print(f'Epoch: {epoch+1}/{num_epochs}, Example {ex}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
+    # Run through a full cycle of training data
+    def train_epoch(self, data_manager):
+        # TODO
+        
+        # TODO - This code is bad and needs to be fixed
+        acc_train = self.model.evaluate(train)
+        acc_test = self.model.evaluate(test)
+        print(f'Epoch: {epoch+1}/{num_epochs}, Example {self.total_examples}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
+        return False
+
+    # Runs training step on one batch of tensors
+    def train_step(self, epoch, inputs, labels):
+        self.optimizer.zero_grad()
+
+        prediction = self.model(inputs)
+        loss = self.loss_fn(prediction.to(torch.float32), labels.to(torch.float32))
+        loss.backward()
+        self.optimizer.step()
+        self.total_examples += 1
+
+    # Computes forward on the model - I used this for debugging
+    def model_forward(self, input_tensor):
+        with torch.no_grad():
+            return self.model(input_tensor)
 
 
+if __name__ == '__main__':
+    print("Model-only testing mode")
+    MAX_QUESTION_LENGTH = 412
+    MAX_ANSWER_LENGTH = 30
+    BATCH_SIZE = 20
+
+    data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH, BATCH_SIZE, BertTokenizer.from_pretrained("bert-large-uncased"))
+    model = BERTTest(MAX_ANSWER_LENGTH)
+    agent = BERTAgent(model)
+
+    data.load_data("../../data/qanta.dev.2018.04.18.json", MAX_ANSWER_LENGTH)
+    next_data = data.get_next()
+
+    print(agent.model_forward(next_data[0]))
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))    
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))    
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))    
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))    
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))    
+    agent.train_step(1, next_data[0], next_data[1])
+    print(agent.model_forward(next_data[0]))

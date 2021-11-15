@@ -92,26 +92,34 @@ def analyze_dataset(filename):
 
 
 class Project_BERT_Data_Manager:
-    def __init__(self, maximum_question_length, maximum_answer_length, tokenizer):
+    def __init__(self, maximum_question_length, maximum_answer_length, batch_size, tokenizer):
         self.tokenizer = tokenizer
         self.maximum_question_length = maximum_question_length
         self.maximum_answer_length = maximum_answer_length
         self.num_questions = 0
         self.questions = []
         self.answers = []
+        self.current = 0
+        self.batch = 0
+        self.full_cycles = 0
+        self.batch_size = batch_size
 
     def load_data(self, file_name, limit):
-        with open("qanta.train.json") as json_data:
+        with open(file_name) as json_data:
             temp_questions = []
             temp_answers = []
 
             data = json.load(json_data)
             qs = data["questions"]
             number = limit
-            completed = 0
+            
+            #if (limit == 0):
+            #    print("Loaded 0? Why?")
+            #    return
+
             for q in qs:
                 if (limit > 0 and limit <= self.num_questions):     # stop loading when has enough
-                    return
+                    break;
                 text = q["text"]                            
                 answer = re.sub(r'\[or .*', '', q["answer"])    # removing secondary choices from answers
                 answer = re.sub(r'\(or .*', '', answer)         # removing secondary choices from answers
@@ -145,8 +153,44 @@ class Project_BERT_Data_Manager:
 
             self.questions = torch.LongTensor(temp_questions)
             self.answers = torch.LongTensor(temp_answers)
+            print("Loaded " + str() + "")
+
+    def get_next(self):
+        self.cycle()
+        element = (self.questions[self.current:self.current+1], self.answers[self.current:self.current+1])
+        self.current += 1
+        return element;
+
+    def get_next_batch(self):
+        if (self.current + self.batch_size > self.num_questions):
+            batch = (self.questions[self.current:], self.answers[self.current:])
+            self.current = self.num_questions
+            self.cycle()
+            return batch
+        else:
+            batch = (self.questions[self.current:self.current+self.batch_size], self.answers[self.current:self.current+self.batch_size])
+            self.current += self.batch_size
+            self.batch += 1
+            return batch
+
+    def get_cycles(self):
+        return self.full_cycles
+
+    def cycle(self):
+        if (self.current >= self.num_questions):
+            self.full_cycles += 1
+            self.batch = 0
+            self.current = 0
+
+    def reset_cycle(self):
+        self.current = 0
+        self.batch = 0
 
 
+# used to test this file
 if __name__ == '__main__':
-    loader = Project_BERT_Data_Manager(412, 30, BertTokenizer.from_pretrained("bert-large-uncased"))
-    loader.load_data("data/qanta.test.2018.04.18.json", 15000)
+    loader = Project_BERT_Data_Manager(412, 30, 2, BertTokenizer.from_pretrained("bert-large-uncased"))
+    loader.load_data("../../data/qanta.dev.2018.04.18.json", 20)
+    print(loader.get_next_batch())
+    print(loader.get_next_batch())
+    print(loader.get_cycles())
