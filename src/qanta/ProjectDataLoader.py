@@ -118,6 +118,7 @@ class Project_BERT_Data_Manager:
             #    return
 
             for q in qs:
+                print(q)
                 if (limit > 0 and limit <= self.num_questions):     # stop loading when has enough
                     break;
                 text = q["text"]                            
@@ -190,7 +191,7 @@ class Project_BERT_Data_Manager:
 # used to test this file
 if __name__ == '__main__':
     loader = Project_BERT_Data_Manager(412, 30, 2, BertTokenizer.from_pretrained("bert-large-uncased"))
-    loader.load_data("../../data/qanta.dev.2018.04.18.json", 20)
+    loader.load_data("../../data/qanta.dev.2018.04.18.json", 2)
     print(loader.get_next_batch())
     print(loader.get_next_batch())
     print(loader.get_cycles())

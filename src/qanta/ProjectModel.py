@@ -17,7 +17,7 @@ from transformers import BertModel
 from transformers import BertConfig
 from transformers import AdamW
 
-from . import ProjectDataLoader
+from qanta.ProjectDataLoader import *
 
 
 # The actual model - currently unnamed

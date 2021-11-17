@@ -8,9 +8,9 @@ import click
 from tqdm import tqdm
 from flask import Flask, jsonify, request
 
-from . import ProjectModel
-from . import ProjectDataLoader
-from . import util
+from qanta.ProjectModel import *
+from qanta.ProjectDataLoader import * 
+from qanta import util
 
 
 # We might not actually need this..
