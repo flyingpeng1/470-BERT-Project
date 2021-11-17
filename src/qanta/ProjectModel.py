@@ -17,7 +17,7 @@ from transformers import BertModel
 from transformers import BertConfig
 from transformers import AdamW
 
-from ProjectDataLoader import Project_BERT_Data_Manager
+from . import ProjectDataLoader
 
 
 # The actual model - currently unnamed

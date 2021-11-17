@@ -1,7 +1,7 @@
 version: '3'
 services:
   qb:
-    build: Dockerfile-gpu
+    build: .
     container_name: qb
     ports:
       - "4861:4861"

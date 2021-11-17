@@ -8,8 +8,9 @@ import click
 from tqdm import tqdm
 from flask import Flask, jsonify, request
 
-import ProjectModel
-import ProjectDataLoader
+from . import ProjectModel
+from . import ProjectDataLoader
+from . import util
 
 
 # We might not actually need this..
@@ -112,6 +113,7 @@ def train():
     # TODO
 
     # We need to load the training files and run through them here... 
+    return 0;
 
 @cli.command()
 @click.option('--local-qanta-prefix', default='data/')
