@@ -19,61 +19,73 @@ MODEL_LOCATION = "/data/BERTTest.model"
 MAX_QUESTION_LENGTH = 412
 BATCH_SIZE = 1
 
-# We might not actually need this..
-def guess_and_buzz(model, text):
-    # TODO
-    return ("", False)
+def guess_and_buzz(guesser, text):
+    out = guesser.guess(text)
+    return (out, False)
 
-# We might not actually need this..
-def batch_guess_and_buzz(model, text):
-    # TODO
-    return []
+def batch_guess_and_buzz(guesser, text):
+    out = guesser.batch_guess(text)
+    return [(g, False) for g in out]
 
 
 # Executed in seperate thread so that the model can load without holding up the server.
-def load_model(callback):
+def load_model(callback, vocab_file, model_file):
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
-    vocab = load_vocab(VOCAB_LOCATION)
-    model = None                                   # Need model saving and loading!
-    callback(tokenizer, vocab, model)
+    vocab = load_vocab(vocab_file)
+    agent = BERTAgent(None, vocab)
+    agent.load_model(model_file)
+    
+    callback(agent, tokenizer)
 
 
 class Project_Guesser():
-    def __init__(self):
+    def __init__(self, vocab_file, model_file):
         print("Loading model")
+        self.agent = None
         self.tokenizer = None
-        self.vocab = None
-        self.model = None
         self.ready = False
-        self.load_thread = threading.Thread(target=load_model, args=[self.load_callback])
+        self.load_thread = threading.Thread(target=load_model, args=[self.load_callback, vocab_file, model_file])
         self.load_thread.start()
 
     # Called with one question string
     def guess(self, text):
         if (not self.ready):
             self.load_thread.join()
-        return ""
+
+        # Tokenize question
+        encoded_questions = encode_question([text], self.tokenizer, MAX_QUESTION_LENGTH)
+
+        output = self.agent.model_forward(encoded_questions)
+        guesses = self.agent.vocab.decode(output)[0]
+
+        return guesses
 
     # called with an array of questions
     def batch_guess(self, text):
         if (not self.ready):
             self.load_thread.join()
-        return ["" for x in text]
+
+        # Tokenize question
+        encoded_question = encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)
+        
+        output = self.agent.model_forward(encoded_question)
+        guess = self.agent.vocab.decode(output)
+
+        return [x for x in guess]
 
     # Called to determine if the model has been loaded
     def isReady(self):
         return self.ready
 
     # Called after the loading thread is finished
-    def load_callback(self, tokenizer, vocab, model):
+    def load_callback(self, agent, tokenizer):
+        self.agent = agent
         self.tokenizer = tokenizer
-        self.vocab = vocab
-        self.model = model
         self.ready = True
         print("Model is loaded!")
 
-def create_app(enable_batch=True):
-    guesser = Macaw_Guesser()
+def create_app(vocab_file, model_file):
+    guesser = Project_Guesser(vocab_file, model_file)
     app = Flask(__name__)
 
     @app.route('/api/1.0/quizbowl/act', methods=['POST'])
@@ -86,7 +98,7 @@ def create_app(enable_batch=True):
     def status():
         print(guesser.isReady())
         return jsonify({
-            'batch': enable_batch,
+            'batch': True,
             'batch_size': 10,
             'ready': guesser.isReady(),
             'include_wiki_paragraphs': False
@@ -110,12 +122,11 @@ def cli():
 @cli.command()
 @click.option('--host', default='0.0.0.0')
 @click.option('--port', default=4861)
-@click.option('--disable-batch', default=False, is_flag=True)
-def web(host, port, disable_batch):
-    """
-    Start web server wrapping tfidf model
-    """
-    app = create_app(enable_batch=not disable_batch)
+#@click.option('--disable-batch', default=False, is_flag=True)
+@click.option('--vocab_file', default="src/data/qanta.vocab")
+@click.option('--model_file', default="src/data/qanta.model")
+def web(host, port, vocab_file, model_file):    
+    app = create_app(vocab_file, model_file)
     app.run(host=host, port=port, debug=True)
     print("Started web app")
 
@@ -134,10 +145,14 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     vocab = load_vocab(vocab_file)
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
     data.load_data(train_file, data_limit)
-    model = BERTModel(data.get_answer_vector_length())
+    
+    model = None
     agent = BERTAgent(model, vocab)
 
-    #if (resume):
+    if (resume):
+        model = resume_file
+    else:
+        model = BERTModel(data.get_answer_vector_length())
     #if (preloaded_manager):
 
     print("Finished loading - commence training.")
