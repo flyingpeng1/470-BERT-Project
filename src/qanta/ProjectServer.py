@@ -16,7 +16,8 @@ CACHE_LOCATION = "/cache"
 VOCAB_LOCATION = "/data/qanta.vocab"
 MODEL_LOCATION = "/data/BERTTest.model"
 
-
+MAX_QUESTION_LENGTH = 412
+BATCH_SIZE = 1
 
 # We might not actually need this..
 def guess_and_buzz(model, text):
@@ -119,8 +120,34 @@ def web(host, port, disable_batch):
     print("Started web app")
 
 @cli.command()
-def train():
-    # TODO
+@click.option('--vocab_file', default="src/data/qanta.vocab")
+@click.option('--train_file', default="data/qanta.train.2018.04.18.json")
+@click.option('--data_limit', default=-1)
+@click.option('--epochs', default=1)
+@click.option('--resume', default=False, is_flag=True)
+@click.option('--resume_file', default="")
+@click.option('--preloaded_manager', default=False, is_flag=True)
+@click.option('--manager_file', default="")
+def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
+    print("Loading resources...")
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    vocab = load_vocab(vocab_file)
+    data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
+    data.load_data(train_file, data_limit)
+    model = BERTModel(data.get_answer_vector_length())
+    agent = BERTAgent(model, vocab)
+
+    #if (resume):
+    #if (preloaded_manager):
+
+    print("Finished loading - commence training.")
+
+
+    current_epoch = data.full_epochs
+    while (current_epoch < epochs):
+        current_epoch = data.full_epochs
+        agent.train_epoch(data, 50, "training_progress")
+
 
     # We need to load the training files and run through them here... 
     return 0
