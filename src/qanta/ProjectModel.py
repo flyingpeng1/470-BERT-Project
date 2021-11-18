@@ -56,13 +56,16 @@ class BERTAgent():
 
     # Run through a full cycle of training data
     def train_epoch(self, data_manager):
-        # TODO
-        
-        # This code is bad and needs to be fixed
-        acc_train = self.model.evaluate(train)
-        acc_test = self.model.evaluate(test)
-        print(f'Epoch: {epoch+1}/{num_epochs}, Example {self.total_examples}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
-        return False
+        epoch = data_manager.full_epochs
+        while epoch == data_manager.full_epochs:
+            inputs, labels = data_manager.get_next_batch()
+            self.train_step(epoch, inputs, labels)
+            
+        # TODO This code is bad and needs to be fixed
+        # acc_train = self.model.evaluate(train)
+        # acc_test = self.model.evaluate(test)
+        # print(f'Epoch: {epoch+1}/{num_epochs}, Example {self.total_examples}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
+        # return False
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
