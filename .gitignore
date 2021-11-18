@@ -1,6 +1,7 @@
 /src/predictions.json
 /src/scores.json
-/src/data/*.manager
+/src/data/*
+/src/training_progress/*
 /data/*
 models/*
 *.pickle
@@ -116,3 +117,4 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+src/data/train.manager

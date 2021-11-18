@@ -206,13 +206,13 @@ def load_data_manager(file_name):
 # Helper that takes a question and the tokenizer, and encodes the question properly.
 #=======================================================================================================
 def encode_question(question, tokenizer, maximum_question_length):
-    question_encoded = self.tokenizer.encode(self.tokenizer.tokenize(question))
+    question_encoded = tokenizer.encode(tokenizer.tokenize(question))
 
     # Forcing question to be exactly the right length for BERT to accept
-    if (len(question_encoded) > self.maximum_question_length):
-        question_encoded = question_encoded[:self.maximum_question_length]
-    elif (len(question_encoded) < self.maximum_question_length):
-        question_encoded.extend([0] * (self.maximum_question_length - len(question_encoded)))
+    if (len(question_encoded) > maximum_question_length):
+        question_encoded = question_encoded[:maximum_question_length]
+    elif (len(question_encoded) < maximum_question_length):
+        question_encoded.extend([0] * (maximum_question_length - len(question_encoded)))
 
     return question_encoded
 
@@ -261,7 +261,8 @@ class Project_BERT_Data_Manager:
                     if (temp_answers == None):
                         temp_answers = answer_encoded
                     else:
-                        torch.cat((temp_answers, answer_encoded))
+                        temp_answers = torch.cat((temp_answers, answer_encoded))
+
                     temp_questions.append(question_encoded)
 
                     self.num_questions += 1
@@ -302,6 +303,9 @@ class Project_BERT_Data_Manager:
     def reset_epoch(self):
         self.current = 0
         self.batch = 0
+
+    def get_epoch_completion(self):
+        return (self.batch/(self.num_questions/self.batch_size))*100
 
     def get_answer_vector_length(self):
         print(self.answer_vocab.num_answers)

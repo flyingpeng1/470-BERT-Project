@@ -33,7 +33,9 @@ class BERTModel(nn.Module):
 
     # computes output vector using pooled BERT output
     def forward(self, x):
-        return self.linear_output(self.bert(x).pooler_output)
+        bert_out = self.bert(x).pooler_output
+        ##print(bert_out.size())
+        return self.linear_output(bert_out)
 
     # Use cosine similarity with answer tensors?
     def evaluate(self, data):
@@ -54,24 +56,40 @@ class BERTAgent():
         self.optimizer = AdamW(model.parameters())
         self.total_examples = 0
 
-    # Run through a full cycle of training data
-    def train_epoch(self, data_manager):
+    # Save model and its associated metadata 
+    def save_model(self, metadata, save_location):
+        pickle.dump({"model": self.model, "metadata":metadata}, open(save_location, "wb+"))
+        print("Saved model to: \"" + save_location + "\"")
+
+    # Load the model and its associated metadata
+    def load_model(self, file_name):
+        load = pickle.load(open(file_name,'rb'))
+        self.model = load["model"]
+        if ("metadata" in load and "epochs" in load["metadata"]):
+            self.vocab.full_epochs = load["metadata"]["epochs"] + 1
+            print("Skipping potentially incomplete epoch: preparing next epoch")
+        print("Loaded model from: \"" + file_name + "\"")
+
+    # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
+    # save_freq
+    def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
+        print("Starting train epoch #" + str(epoch))
         while epoch == data_manager.full_epochs:
             inputs, labels = data_manager.get_next_batch()
             self.train_step(epoch, inputs, labels)
             
-        # TODO This code is bad and needs to be fixed
-        # acc_train = self.model.evaluate(train)
-        # acc_test = self.model.evaluate(test)
-        # print(f'Epoch: {epoch+1}/{num_epochs}, Example {self.total_examples}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
-        # return False
+            if (data_manager.batch % 10):
+                print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
+            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0):
+                self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
         self.optimizer.zero_grad()
 
         prediction = self.model(inputs)
+        
         loss = self.loss_fn(prediction.to(torch.float32), labels.to(torch.float32))
         loss.backward()
         self.optimizer.step()
@@ -86,7 +104,7 @@ class BERTAgent():
 if __name__ == '__main__':
     print("Model-only testing mode")
     MAX_QUESTION_LENGTH = 412
-    BATCH_SIZE = 20
+    BATCH_SIZE = 1
 
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
     vocab = load_vocab("data/qanta.vocab")
@@ -100,7 +118,8 @@ if __name__ == '__main__':
     #print(tokenizer.convert_ids_to_tokens(next_data[0][0])
     #print(vocab.decode(next_data[1]))
 
-    print(next_data[0].size())
+    
+    '''print(next_data[0].size())
     print(next_data[1].size())
 
     print(agent.model_forward(next_data[0]))
@@ -119,4 +138,10 @@ if __name__ == '__main__':
     agent.train_step(1, next_data[0], next_data[1])
     print(agent.model_forward(next_data[0]))
 
-    print(vocab.decode(agent.model_forward(next_data[0])))
+    print(vocab.decode(agent.model_forward(next_data[0])))'''
+
+    #agent.train_epoch(data, 50, "training_progress")
+    #agent.save_model({}, "training_progress/test_model.model")
+
+    #agent.load_model("training_progress/test_model.model")
+    #agent.train_epoch(data, 50, "training_progress")
