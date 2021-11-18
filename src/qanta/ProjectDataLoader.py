@@ -244,7 +244,7 @@ class Project_BERT_Data_Manager:
 
             for q in qs:
                 if (limit > 0 and limit <= self.num_questions):     # stop loading when has enough
-                    break;
+                    break
                 text = q["text"]               
                 answer = q["page"]             
                 #answer = re.sub(r'\[or .*', '', q["answer"])    # removing secondary choices from answers
@@ -276,7 +276,7 @@ class Project_BERT_Data_Manager:
         self.epoch()
         element = (self.questions[self.current:self.current+1], self.answers[self.current:self.current+1])
         self.current += 1
-        return element;
+        return element
 
     def get_next_batch(self):
         if (self.current + self.batch_size > self.num_questions):
