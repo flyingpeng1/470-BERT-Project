@@ -23,14 +23,14 @@ import re
 # The vocabulary consists of all answers that we want to have as options for the guesser to select from.
 class AnswerVocab:
     def __init__(self, num_answers, answers_list):
-        self.num_answers = num_answers
-        self.answers = answers_list
+        self.num_answers = num_answers + 1
+        self.answers = ["UNKNOWN"] + answers_list
         self.UNK_IDX = 0
         self.list_template = None
 
     # returns the answers in tensor form
     def encode(self, text_answers):
-        self.list_template = [0] * (self.num_answers + 1)
+        self.list_template = [0] * (self.num_answers)
         encoded_answers = []
         for a in text_answers:
             idx = -1
@@ -44,7 +44,7 @@ class AnswerVocab:
             if (idx == -1):
                 v[self.UNK_IDX] = 1
             else:
-                v[idx + 1] = 1 # need to shift over by 1 because the unk idx is at idx 0
+                v[idx] = 1
 
             encoded_answers.append(v)
         return torch.LongTensor(encoded_answers)
@@ -54,10 +54,10 @@ class AnswerVocab:
         answers = []
         for a in ids:
             # Checking to make sure that the vector is the correct size, otherwise this doesn't make any sense
-            if (len(a) != self.num_answers + 1):
-                raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers + 1))
+            if (len(a) != self.num_answers):
+                raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers))
             max_value = max(a)
-            answers.append(self.answers[a.tolist().index(max_value) - 1]) # need to shift over by 1 because the unk idx is at idx 0
+            answers.append(self.answers[a.tolist().index(max_value)])
         return answers
 
 
@@ -241,7 +241,7 @@ class Project_BERT_Data_Manager:
 
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
                     question_encoded = self.tokenizer.encode(self.tokenizer.tokenize(text))
-                    answer_encoded = self.answer_vocab.encode(answer)
+                    answer_encoded = self.answer_vocab.encode([answer])
 
                     # Forcing question to be exactly the right length for BERT to accept
                     if (len(question_encoded) > self.maximum_question_length):
@@ -294,24 +294,29 @@ class Project_BERT_Data_Manager:
         self.current = 0
         self.batch = 0
 
+    def get_answer_vector_length(self):
+        print(self.answer_vocab.num_answers)
+        return self.answer_vocab.num_answers
+
 
 # used to test this file
 if __name__ == '__main__':
-    #answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")
+    answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")
     
-    vocab = load_vocab("data/qanta.vocab")
-    loader = Project_BERT_Data_Manager(412, vocab, 10, BertTokenizer.from_pretrained("bert-large-uncased"))
+    #vocab = load_vocab("data/qanta.vocab")
+    #tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
+    #loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
     #test_answers = count_pages("../data/qanta.test.2018.04.18.json")
     #train_answers = count_pages("../data/qanta.train.2018.04.18.json")
     
 
-    #encoded = vocab.encode(["Albert_Einstein"])
-    #decode = vocab.decode(encoded)
+    #loader.load_data("../data/qanta.train.2018.04.18.json", 1)
+    #data = loader.get_next()
+    #decode = vocab.decode(data[1])
     #print(decode)
 
 
-    loader.load_data("../data/qanta.train.2018.04.18.json", -1)
-    save_data_manager(loader, "data/train.manager")
+    #save_data_manager(loader, "data/train.manager")
     #loader = load_data_manager("data/train.manager")
     #print(loader.get_next_batch())
 

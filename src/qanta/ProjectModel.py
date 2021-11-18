@@ -24,11 +24,11 @@ from qanta.ProjectDataLoader import *
 class BERTTest(nn.Module):
 
     # Initialize the parameters you'll need for the model.
-    def __init__(self, max_answer_length):    
+    def __init__(self, answer_vector_length):    
         super(BERTTest, self).__init__()
         config = BertConfig()
         self.bert = BertModel(config)
-        self.linear_output = nn.Linear(768, max_answer_length)
+        self.linear_output = nn.Linear(768, answer_vector_length)
 
 
     # computes output vector using pooled BERT output
@@ -47,8 +47,9 @@ class BERTTest(nn.Module):
 # This will help abstract the process out of the web server.
 class BERTAgent():
 
-    def __init__(self, model):
+    def __init__(self, model, vocab):
         self.model = model
+        self.vocab = vocab
         self.loss_fn = nn.MSELoss()
         self.optimizer = AdamW(model.parameters())
         self.total_examples = 0
@@ -82,16 +83,23 @@ class BERTAgent():
 if __name__ == '__main__':
     print("Model-only testing mode")
     MAX_QUESTION_LENGTH = 412
-    MAX_ANSWER_LENGTH = 30
     BATCH_SIZE = 20
 
-    data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, MAX_ANSWER_LENGTH, BATCH_SIZE, BertTokenizer.from_pretrained("bert-large-uncased"))
-    model = BERTTest(MAX_ANSWER_LENGTH)
-    agent = BERTAgent(model)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
+    vocab = load_vocab("data/qanta.vocab")
+    data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
+    model = BERTTest(data.get_answer_vector_length())
+    agent = BERTAgent(model, vocab)
 
-    data.load_data("../../data/qanta.dev.2018.04.18.json", MAX_ANSWER_LENGTH)
+    data.load_data("../data/qanta.dev.2018.04.18.json", 10)
     next_data = data.get_next()
 
+    #print(tokenizer.convert_ids_to_tokens(next_data[0][0])
+    #print(vocab.decode(next_data[1]))
+
+    print(next_data[0].size())
+    print(next_data[1].size())
+
     print(agent.model_forward(next_data[0]))
     agent.train_step(1, next_data[0], next_data[1])
     print(agent.model_forward(next_data[0]))
@@ -107,3 +115,5 @@ if __name__ == '__main__':
     print(agent.model_forward(next_data[0]))    
     agent.train_step(1, next_data[0], next_data[1])
     print(agent.model_forward(next_data[0]))
+
+    print(vocab.decode(agent.model_forward(next_data[0])))

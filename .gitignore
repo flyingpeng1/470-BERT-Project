@@ -1,5 +1,6 @@
 /src/predictions.json
 /src/scores.json
+/src/data/*.manager
 /data/*
 models/*
 *.pickle
