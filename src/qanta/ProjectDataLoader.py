@@ -203,6 +203,20 @@ def load_data_manager(file_name):
     return pickle.load(open(file_name,'rb'))
 
 #=======================================================================================================
+# Helper that takes a question and the tokenizer, and encodes the question properly.
+#=======================================================================================================
+def encode_question(question, tokenizer, maximum_question_length):
+    question_encoded = self.tokenizer.encode(self.tokenizer.tokenize(question))
+
+    # Forcing question to be exactly the right length for BERT to accept
+    if (len(question_encoded) > self.maximum_question_length):
+        question_encoded = question_encoded[:self.maximum_question_length]
+    elif (len(question_encoded) < self.maximum_question_length):
+        question_encoded.extend([0] * (self.maximum_question_length - len(question_encoded)))
+
+    return question_encoded
+
+#=======================================================================================================
 # Manages loading, transforming, and providing data to the model
 #=======================================================================================================
 class Project_BERT_Data_Manager:
@@ -240,14 +254,9 @@ class Project_BERT_Data_Manager:
                 #answer = re.sub(r'\[be .*', '', answer)         # removing secondary choices from answers
 
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
-                    question_encoded = self.tokenizer.encode(self.tokenizer.tokenize(text))
-                    answer_encoded = self.answer_vocab.encode([answer])
 
-                    # Forcing question to be exactly the right length for BERT to accept
-                    if (len(question_encoded) > self.maximum_question_length):
-                        question_encoded = question_encoded[:self.maximum_question_length]
-                    elif (len(question_encoded) < self.maximum_question_length):
-                        question_encoded.extend([0] * (self.maximum_question_length - len(question_encoded)))
+                    question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
+                    answer_encoded = self.answer_vocab.encode([answer])
                     
                     if (temp_answers == None):
                         temp_answers = answer_encoded

@@ -27,6 +27,7 @@ class BERTModel(nn.Module):
     def __init__(self, answer_vector_length):    
         super(BERTModel, self).__init__()
         config = BertConfig()
+        self.answer_vector_length = answer_vector_length
         self.bert = BertModel(config)
         self.linear_output = nn.Linear(768, answer_vector_length)
 
