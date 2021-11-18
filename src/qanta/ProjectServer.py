@@ -12,6 +12,11 @@ from qanta.ProjectModel import *
 from qanta.ProjectDataLoader import * 
 from qanta import util
 
+CACHE_LOCATION = "/cache"
+VOCAB_LOCATION = "/data/qanta.vocab"
+MODEL_LOCATION = "/data/BERTTest.model"
+
+
 
 # We might not actually need this..
 def guess_and_buzz(model, text):
@@ -26,13 +31,17 @@ def batch_guess_and_buzz(model, text):
 
 # Executed in seperate thread so that the model can load without holding up the server.
 def load_model(callback):
-    callback(None, None)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    vocab = load_vocab(VOCAB_LOCATION)
+    model = None                                   # Need model saving and loading!
+    callback(tokenizer, vocab, model)
 
 
 class Project_Guesser():
     def __init__(self):
         print("Loading model")
         self.tokenizer = None
+        self.vocab = None
         self.model = None
         self.ready = False
         self.load_thread = threading.Thread(target=load_model, args=[self.load_callback])
@@ -55,8 +64,9 @@ class Project_Guesser():
         return self.ready
 
     # Called after the loading thread is finished
-    def load_callback(self, tokenizer, model):
+    def load_callback(self, tokenizer, vocab, model):
         self.tokenizer = tokenizer
+        self.vocab = vocab
         self.model = model
         self.ready = True
         print("Model is loaded!")
