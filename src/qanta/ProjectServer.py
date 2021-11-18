@@ -113,7 +113,7 @@ def train():
     # TODO
 
     # We need to load the training files and run through them here... 
-    return 0;
+    return 0
 
 @cli.command()
 @click.option('--local-qanta-prefix', default='data/')

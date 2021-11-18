@@ -21,15 +21,14 @@ from qanta.ProjectDataLoader import *
 
 
 # The actual model - currently unnamed
-class BERTTest(nn.Module):
+class BERTModel(nn.Module):
 
     # Initialize the parameters you'll need for the model.
     def __init__(self, answer_vector_length):    
-        super(BERTTest, self).__init__()
+        super(BERTModel, self).__init__()
         config = BertConfig()
         self.bert = BertModel(config)
         self.linear_output = nn.Linear(768, answer_vector_length)
-
 
     # computes output vector using pooled BERT output
     def forward(self, x):
@@ -58,7 +57,7 @@ class BERTAgent():
     def train_epoch(self, data_manager):
         # TODO
         
-        # TODO - This code is bad and needs to be fixed
+        # This code is bad and needs to be fixed
         acc_train = self.model.evaluate(train)
         acc_test = self.model.evaluate(test)
         print(f'Epoch: {epoch+1}/{num_epochs}, Example {self.total_examples}, loss = {loss.item():.4f}, train_acc = {acc_train.item():.4f} test_acc = {acc_test.item():.4f}')
@@ -88,7 +87,7 @@ if __name__ == '__main__':
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
     vocab = load_vocab("data/qanta.vocab")
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    model = BERTTest(data.get_answer_vector_length())
+    model = BERTModel(data.get_answer_vector_length())
     agent = BERTAgent(model, vocab)
 
     data.load_data("../data/qanta.dev.2018.04.18.json", 10)
