@@ -19,8 +19,9 @@ from transformers import AdamW
 
 from qanta.ProjectDataLoader import *
 
-
-# The actual model - currently unnamed
+#=======================================================================================================
+# The actual model that is managed by pytorch - still needs a name!
+#=======================================================================================================
 class BERTModel(nn.Module):
 
     # Initialize the parameters you'll need for the model.
@@ -44,9 +45,10 @@ class BERTModel(nn.Module):
         with torch.no_grad():
             return 0
 
-
+#=======================================================================================================
 # This will handle the training and evaluating of the model.
 # This will help abstract the process out of the web server.
+#=======================================================================================================
 class BERTAgent():
 
     def __init__(self, model, vocab):

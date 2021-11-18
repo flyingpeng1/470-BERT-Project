@@ -19,16 +19,23 @@ MODEL_LOCATION = "/data/BERTTest.model"
 MAX_QUESTION_LENGTH = 412
 BATCH_SIZE = 1
 
+#=======================================================================================================
+# Combines guesser and buzzer outputs
+#=======================================================================================================
 def guess_and_buzz(guesser, text):
     out = guesser.guess(text)
     return (out, False)
 
+#=======================================================================================================
+# Combines batch guesser and buzzer outputs
+#=======================================================================================================
 def batch_guess_and_buzz(guesser, text):
     out = guesser.batch_guess(text)
     return [(g, False) for g in out]
 
-
+#=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
+#=======================================================================================================
 def load_model(callback, vocab_file, model_file):
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
@@ -37,7 +44,9 @@ def load_model(callback, vocab_file, model_file):
     
     callback(agent, tokenizer)
 
-
+#=======================================================================================================
+# Generates gueses using a model from quizbowl questions.
+#=======================================================================================================
 class Project_Guesser():
     def __init__(self, vocab_file, model_file):
         print("Loading model")
@@ -60,7 +69,7 @@ class Project_Guesser():
 
         return guesses
 
-    # called with an array of questions
+    # called with an array of questions, returns a guess batch
     def batch_guess(self, text):
         if (not self.ready):
             self.load_thread.join()
@@ -84,6 +93,10 @@ class Project_Guesser():
         self.ready = True
         print("Model is loaded!")
 
+
+#=======================================================================================================
+# Called to start qb server.
+#=======================================================================================================
 def create_app(vocab_file, model_file):
     guesser = Project_Guesser(vocab_file, model_file)
     app = Flask(__name__)
@@ -115,10 +128,14 @@ def create_app(vocab_file, model_file):
     return app
 
 
+#=======================================================================================================
+# Click commands for sending server arguments. 
+#=======================================================================================================
 @click.group()
 def cli():
     pass
 
+# starts the qb answer server
 @cli.command()
 @click.option('--host', default='0.0.0.0')
 @click.option('--port', default=4861)
@@ -130,6 +147,7 @@ def web(host, port, vocab_file, model_file):
     app.run(host=host, port=port, debug=True)
     print("Started web app")
 
+# run to train the model - vocab_file and train_file are required!
 @cli.command()
 @click.option('--vocab_file', default="src/data/qanta.vocab")
 @click.option('--train_file', default="data/qanta.train.2018.04.18.json")
@@ -157,23 +175,18 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 
     print("Finished loading - commence training.")
 
-
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
         current_epoch = data.full_epochs
         agent.train_epoch(data, 50, "training_progress")
 
+    print("Training completed - " + str(epochs) + " full epochs")
 
-    # We need to load the training files and run through them here... 
-    return 0
-
+# Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
 @cli.command()
 @click.option('--local-qanta-prefix', default='data/')
-@click.option('--retrieve-paragraphs', default=False, is_flag=True)
-def download(local_qanta_prefix, retrieve_paragraphs):
-    """
-    Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
-    """
+#@click.option('--retrieve-paragraphs', default=False, is_flag=True)
+def download(local_qanta_prefix, ):#retrieve_paragraphs
     util.download(local_qanta_prefix, retrieve_paragraphs)
 
 
