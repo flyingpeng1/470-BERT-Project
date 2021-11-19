@@ -7,6 +7,8 @@ This project is based on the reference system - refer to the reference system do
 This is a system designed to answer quizbowl questions using transformers bert wrapped with a linear layer to produce answer probabilities.
 Refer to the diagram for more details.
 
+![Guesser diagram](BERT_diagram.png)
+
 Steps for training and using the system:
   - Download the necessary data files for training with the download command
   - Generate an answer vocab using the train file
