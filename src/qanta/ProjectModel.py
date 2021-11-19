@@ -26,17 +26,17 @@ CACHE_LOCATION = "cache"
 #=======================================================================================================
 # The actual model that is managed by pytorch - still needs a name!
 #=======================================================================================================
-class BERTModel(nn.Module):
+class QuizBERT(nn.Module):
 
     # Initialize the parameters you'll need for the model.
     def __init__(self, answer_vector_length, cache=""):    
-        super(BERTModel, self).__init__()
+        super(QuizBERT, self).__init__()
         if (not cache==""):
-            self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
+            self.bert = QuizBERT.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
         else:
             print("No pretraining cache provided: falling back to fresh bert model.")
             config = BertConfig()
-            self.bert = BertModel(config).to(device)
+            self.bert = QuizBERT(config).to(device)
 
         self.answer_vector_length = answer_vector_length
         self.linear_output = nn.Linear(768, answer_vector_length).to(device)
@@ -78,7 +78,10 @@ class BERTAgent():
         self.vocab = vocab
         self.loss_fn = nn.MSELoss()
         self.loss_fn = self.loss_fn.to(device)
-        self.total_examples = 0                          # TODO - save this data correctly!!!
+        self.total_examples = 0
+        self.checkpoint_loss = 0
+        self.epoch_loss = 0
+        # TODO - save this data correctly!!!
         self.model = None
         self.optimizer = None
 
@@ -111,6 +114,7 @@ class BERTAgent():
     # save_freq
     def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
+        self.epoch_loss = 0
         print("Starting train epoch #" + str(epoch))
         while epoch == data_manager.full_epochs:
             inputs, labels = data_manager.get_next_batch()
@@ -121,6 +125,7 @@ class BERTAgent():
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
+        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples / (epoch+1))))
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
@@ -132,6 +137,15 @@ class BERTAgent():
         loss.backward()
         self.optimizer.step()
         self.total_examples += 1
+
+        self.checkpoint_loss += loss.data.numpy()
+        self.epoch_loss += loss.data.numpy()
+
+        checkpoint = 64
+        if self.total_examples % checkpoint == 0 and self.total_examples > 0:
+            loss_avg = self.checkpoint_loss / checkpoint
+            print('num exs: %d, loss: %.5f' % (self.total_examples, loss_avg))
+            self.checkpoint_loss = 0
 
     # used to determine whether or not the model is doing autograd and such when running forward
     def model_set_mode(self, mode):
@@ -156,7 +170,7 @@ if __name__ == '__main__':
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     vocab = load_vocab("../data/BERTTest.vocab")
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    model = BERTModel(data.get_answer_vector_length(), CACHE_LOCATION)
+    model = QuizBERT(data.get_answer_vector_length(), CACHE_LOCATION)
     model.to_device(device)
     agent = BERTAgent(model, vocab)
 
