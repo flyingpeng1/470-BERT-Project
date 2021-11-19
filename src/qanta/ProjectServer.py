@@ -201,6 +201,15 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 
     print("Training completed - " + str(epochs) + " full epochs")
 
+
+# Run to generate vocab file in specified location using specified data file.
+@cli.command()
+@click.option('--save_location', default='data/BERTTest.vocab')
+@click.option('--data_file', default='data/')
+def generate_vocab(save_location, data_file):
+    pass
+
+
 # Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
 @cli.command()
 @click.option('--local-qanta-prefix', default='data/')
