@@ -1,1 +1,26 @@
-.\env\Scripts\activate
+.\env\Scripts\activate   # I don't remember
+
+470-BERT-Project\src>python -m qanta.ProjectModel  # Run project model only
+470-BERT-Project\src>python -m qanta.ProjectDataLoader  # Run project data loader only
+
+docker-compose up    # launch both the answer server and the evaluator
+
+
+docker-compose run qb ./cli download     # download the data
+
+
+docker-compose run qb ./cli train        # trains model and saves it in specified loaction
+	-- vocab_file "path to vocab file - REQUIRED"
+	-- train_file "path to data file containing train set"
+	-- data_limit [number of questions to load (defaults to all)]
+	-- epochs [number of epochs to run]
+	-- resume *flag telling system to resume from previous model file
+	-- resume_file "path to model file to resume training from"
+	-- preloaded_manager *flag telling system to load data manager from file
+	-- manager_file "path to data manager file"
+
+docker-compose run qb        # run the model to answer questions and buzz
+	-- vocab_file "path to vocab file to use"
+	-- model_file "path to model file to use"
+	-- host
+	-- port

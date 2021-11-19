@@ -12,12 +12,13 @@ from qanta.ProjectModel import *
 from qanta.ProjectDataLoader import * 
 from qanta import util
 
-CACHE_LOCATION = "/cache"
-VOCAB_LOCATION = "/data/qanta.vocab"
+CACHE_LOCATION = "/src/cache"
+VOCAB_LOCATION = "/src/data/qanta.vocab"
 MODEL_LOCATION = "/data/BERTTest.model"
+TRAINING_PROGRESS_LOCATION = "/src/train_progress"
 
 MAX_QUESTION_LENGTH = 412
-BATCH_SIZE = 1
+BATCH_SIZE = 50
 
 #=======================================================================================================
 # Combines guesser and buzzer outputs
@@ -41,6 +42,7 @@ def load_model(callback, vocab_file, model_file):
     vocab = load_vocab(vocab_file)
     agent = BERTAgent(None, vocab)
     agent.load_model(model_file)
+    agent.model_set_mode("eval")
     
     callback(agent, tokenizer)
 
@@ -149,8 +151,8 @@ def web(host, port, vocab_file, model_file):
 
 # run to train the model - vocab_file and train_file are required!
 @cli.command()
-@click.option('--vocab_file', default="src/data/qanta.vocab")
-@click.option('--train_file', default="data/qanta.train.2018.04.18.json")
+@click.option('--vocab_file', default="/src/data/qanta.vocab")
+@click.option('--train_file', default="/src/data/qanta.train.2018.04.18.json")
 @click.option('--data_limit', default=-1)
 @click.option('--epochs', default=1)
 @click.option('--resume', default=False, is_flag=True)
@@ -163,17 +165,19 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     vocab = load_vocab(vocab_file)
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
     data.load_data(train_file, data_limit)
-    
-    model = None
-    agent = BERTAgent(model, vocab)
+    agent = None
 
     if (resume):
-        model = resume_file
+        agent = BERTAgent(None, vocab)
+        agent.load_model(resume_file)
     else:
-        model = BERTModel(data.get_answer_vector_length())
+        agent = BERTAgent(BERTModel(data.get_answer_vector_length()), vocab)
+    
     #if (preloaded_manager):
 
     print("Finished loading - commence training.")
+
+    agent.model_set_mode("train")
 
     current_epoch = data.full_epochs
     while (current_epoch < epochs):

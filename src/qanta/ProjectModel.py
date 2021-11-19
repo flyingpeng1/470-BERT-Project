@@ -31,17 +31,23 @@ class BERTModel(nn.Module):
         self.answer_vector_length = answer_vector_length
         self.bert = BertModel(config)
         self.linear_output = nn.Linear(768, answer_vector_length)
+        self.last_pooler_out = None
 
     # computes output vector using pooled BERT output
     def forward(self, x):
-        bert_out = self.bert(x).pooler_output
+        self.last_pooler_out = self.bert(x).pooler_output
         ##print(bert_out.size())
-        return self.linear_output(bert_out)
+        return self.linear_output(self.last_pooler_out)
 
-    # Use cosine similarity with answer tensors?
+    # return last pooler output vector - will be used in buzztrain
+    def get_last_pooler_output(self):
+        if (self.last_pooler_out == None):
+            raise ValueError("No pooler output cached - run through a guess first!")
+        return self.last_pooler_out
+
+    # Unimplemented
     def evaluate(self, data):
         # TODO
-
         with torch.no_grad():
             return 0
 
@@ -52,11 +58,18 @@ class BERTModel(nn.Module):
 class BERTAgent():
 
     def __init__(self, model, vocab):
-        self.model = model
         self.vocab = vocab
         self.loss_fn = nn.MSELoss()
-        self.optimizer = AdamW(model.parameters())
-        self.total_examples = 0
+        self.total_examples = 0                          # TODO - save this data correctly!!!
+        self.model = None
+        self.optimizer = None
+
+        # waiting to create the optimizer until a model is loaded
+        if (not model == None):
+            self.model = model
+            self.optimizer = AdamW(model.parameters())
+        else:
+            print("Agent is waiting for model load!")
 
     # Save model and its associated metadata 
     def save_model(self, metadata, save_location):
@@ -70,6 +83,8 @@ class BERTAgent():
         if ("metadata" in load and "epochs" in load["metadata"]):
             self.vocab.full_epochs = load["metadata"]["epochs"] + 1
             print("Skipping potentially incomplete epoch: preparing next epoch")
+
+        self.optimizer = AdamW(self.model.parameters())
         print("Loaded model from: \"" + file_name + "\"")
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
@@ -83,7 +98,7 @@ class BERTAgent():
             
             if (data_manager.batch % 10):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
-            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0):
+            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
 
     # Runs training step on one batch of tensors
@@ -96,6 +111,15 @@ class BERTAgent():
         loss.backward()
         self.optimizer.step()
         self.total_examples += 1
+
+    # used to determine whether or not the model is doing autograd and such when running forward
+    def model_set_mode(self, mode):
+        if (mode == "eval"):
+            self.model.eval()
+        elif (mode == "train"):
+            self.model.train()
+        else:
+            raise ValueError("No model mode \"" + mode + "\" exists")
 
     # Computes forward on the model - I used this for debugging
     def model_forward(self, input_tensor):
