@@ -3,6 +3,7 @@ from collections import defaultdict
 import pickle
 import json
 from os import path
+import threading
 
 import click
 from tqdm import tqdm
@@ -12,13 +13,23 @@ from qanta.ProjectModel import *
 from qanta.ProjectDataLoader import * 
 from qanta import util
 
+if (torch.cuda.is_available()):
+    print("CUDA is available")
+else:
+    print("CPU only")
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 CACHE_LOCATION = "/src/cache"
-VOCAB_LOCATION = "/src/data/qanta.vocab"
-MODEL_LOCATION = "/data/BERTTest.model"
-TRAINING_PROGRESS_LOCATION = "/src/train_progress"
+VOCAB_LOCATION = "/src/data/BERTTest.vocab"
+MODEL_LOCATION = "/src/data/BERTTest.model"
+
+TRAIN_CACHE_LOCATION = "cache"
+TRAIN_VOCAB_LOCATION = "../data/BERTTest.vocab"
+TRAINING_PROGRESS_LOCATION = "train_progress"
 
 MAX_QUESTION_LENGTH = 412
-BATCH_SIZE = 50
+BATCH_SIZE = 8
 
 #=======================================================================================================
 # Combines guesser and buzzer outputs
@@ -64,11 +75,11 @@ class Project_Guesser():
             self.load_thread.join()
 
         # Tokenize question
-        encoded_questions = encode_question([text], self.tokenizer, MAX_QUESTION_LENGTH)
+        encoded_question = torch.LongTensor([encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)])
+        encoded_question.to(device)
 
-        output = self.agent.model_forward(encoded_questions)
+        output = self.agent.model_forward(encoded_question)
         guesses = self.agent.vocab.decode(output)[0]
-
         return guesses
 
     # called with an array of questions, returns a guess batch
@@ -76,10 +87,11 @@ class Project_Guesser():
         if (not self.ready):
             self.load_thread.join()
 
-        # Tokenize question
-        encoded_question = encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)
+        # Tokenize questions
+        encoded_questions = torch.LongTensor([encode_question(t, self.tokenizer, MAX_QUESTION_LENGTH) for t in text])
+        encoded_questions.to(device)
         
-        output = self.agent.model_forward(encoded_question)
+        output = self.agent.model_forward(encoded_questions)
         guess = self.agent.vocab.decode(output)
 
         return [x for x in guess]
@@ -142,17 +154,17 @@ def cli():
 @click.option('--host', default='0.0.0.0')
 @click.option('--port', default=4861)
 #@click.option('--disable-batch', default=False, is_flag=True)
-@click.option('--vocab_file', default="src/data/qanta.vocab")
-@click.option('--model_file', default="src/data/qanta.model")
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--model_file', default=MODEL_LOCATION)
 def web(host, port, vocab_file, model_file):    
     app = create_app(vocab_file, model_file)
+    print("Starting web app")
     app.run(host=host, port=port, debug=True)
-    print("Started web app")
 
 # run to train the model - vocab_file and train_file are required!
 @cli.command()
-@click.option('--vocab_file', default="/src/data/qanta.vocab")
-@click.option('--train_file', default="/src/data/qanta.train.2018.04.18.json")
+@click.option('--vocab_file', default=TRAIN_VOCAB_LOCATION)
+@click.option('--train_file', default="../data/qanta.train.2018.04.18.json")
 @click.option('--data_limit', default=-1)
 @click.option('--epochs', default=1)
 @click.option('--resume', default=False, is_flag=True)
@@ -161,11 +173,16 @@ def web(host, port, vocab_file, model_file):
 @click.option('--manager_file', default="")
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
     print("Loading resources...")
-    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=TRAIN_CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
-    data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    data.load_data(train_file, data_limit)
+    data = None
     agent = None
+
+    if (preloaded_manager):
+        data = load_data_manager(manager_file)
+    else:
+        data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
+        data.load_data(train_file, data_limit)
 
     if (resume):
         agent = BERTAgent(None, vocab)
@@ -173,8 +190,6 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     else:
         agent = BERTAgent(BERTModel(data.get_answer_vector_length()), vocab)
     
-    #if (preloaded_manager):
-
     print("Finished loading - commence training.")
 
     agent.model_set_mode("train")
@@ -189,8 +204,8 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 # Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
 @cli.command()
 @click.option('--local-qanta-prefix', default='data/')
-#@click.option('--retrieve-paragraphs', default=False, is_flag=True)
-def download(local_qanta_prefix, ):#retrieve_paragraphs
+#@click.option('--retrieve-paragraphs', default=False, is_flag=True) #retrieve_paragraphs
+def download(local_qanta_prefix):
     util.download(local_qanta_prefix, retrieve_paragraphs)
 
 

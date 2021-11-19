@@ -19,6 +19,8 @@ from transformers import AdamW
 
 from qanta.ProjectDataLoader import *
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 #=======================================================================================================
 # The actual model that is managed by pytorch - still needs a name!
 #=======================================================================================================
@@ -29,8 +31,8 @@ class BERTModel(nn.Module):
         super(BERTModel, self).__init__()
         config = BertConfig()
         self.answer_vector_length = answer_vector_length
-        self.bert = BertModel(config)
-        self.linear_output = nn.Linear(768, answer_vector_length)
+        self.bert = BertModel(config).to(device)
+        self.linear_output = nn.Linear(768, answer_vector_length).to(device)
         self.last_pooler_out = None
 
     # computes output vector using pooled BERT output
@@ -44,6 +46,11 @@ class BERTModel(nn.Module):
         if (self.last_pooler_out == None):
             raise ValueError("No pooler output cached - run through a guess first!")
         return self.last_pooler_out
+
+    def to_device(self, device):
+        self.bert = self.bert.to(device)
+        self.linear_output = self.linear_output.to(device)
+        self = self.to(device)
 
     # Unimplemented
     def evaluate(self, data):
@@ -60,6 +67,7 @@ class BERTAgent():
     def __init__(self, model, vocab):
         self.vocab = vocab
         self.loss_fn = nn.MSELoss()
+        self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0                          # TODO - save this data correctly!!!
         self.model = None
         self.optimizer = None
@@ -67,6 +75,7 @@ class BERTAgent():
         # waiting to create the optimizer until a model is loaded
         if (not model == None):
             self.model = model
+            self.model.to_device(device)
             self.optimizer = AdamW(model.parameters())
         else:
             print("Agent is waiting for model load!")
@@ -80,6 +89,7 @@ class BERTAgent():
     def load_model(self, file_name):
         load = pickle.load(open(file_name,'rb'))
         self.model = load["model"]
+        self.model.to_device(device)
         if ("metadata" in load and "epochs" in load["metadata"]):
             self.vocab.full_epochs = load["metadata"]["epochs"] + 1
             print("Skipping potentially incomplete epoch: preparing next epoch")
@@ -94,8 +104,9 @@ class BERTAgent():
         print("Starting train epoch #" + str(epoch))
         while epoch == data_manager.full_epochs:
             inputs, labels = data_manager.get_next_batch()
-            self.train_step(epoch, inputs, labels)
-            
+            self.train_step(epoch, inputs.to(device), labels.to(device))
+            torch.cuda.empty_cache()
+
             if (data_manager.batch % 10):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
@@ -107,7 +118,7 @@ class BERTAgent():
 
         prediction = self.model(inputs)
         
-        loss = self.loss_fn(prediction.to(torch.float32), labels.to(torch.float32))
+        loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(torch.float32).to(device))
         loss.backward()
         self.optimizer.step()
         self.total_examples += 1
@@ -133,9 +144,10 @@ if __name__ == '__main__':
     BATCH_SIZE = 1
 
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
-    vocab = load_vocab("data/qanta.vocab")
+    vocab = load_vocab("../data/BERTTest.vocab")
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
     model = BERTModel(data.get_answer_vector_length())
+    model.to_device(device)
     agent = BERTAgent(model, vocab)
 
     data.load_data("../data/qanta.dev.2018.04.18.json", 10)
@@ -166,8 +178,8 @@ if __name__ == '__main__':
 
     print(vocab.decode(agent.model_forward(next_data[0])))'''
 
-    #agent.train_epoch(data, 50, "training_progress")
-    #agent.save_model({}, "training_progress/test_model.model")
+    agent.train_epoch(data, 50, "training_progress")
+    agent.save_model({}, "training_progress/test_model.model")
 
     #agent.load_model("training_progress/test_model.model")
     #agent.train_epoch(data, 50, "training_progress")

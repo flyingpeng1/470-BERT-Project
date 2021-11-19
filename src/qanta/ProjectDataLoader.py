@@ -19,6 +19,8 @@ from transformers import BertTokenizer
 
 import re
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # This is the object that gets pickled and saved with metadata about the vocabulary
 # The vocabulary consists of all answers that we want to have as options for the guesser to select from.
 class AnswerVocab:
@@ -260,7 +262,9 @@ class Project_BERT_Data_Manager:
                     
                     if (temp_answers == None):
                         temp_answers = answer_encoded
+                        temp_answers = temp_answers
                     else:
+                        answer_encoded = answer_encoded
                         temp_answers = torch.cat((temp_answers, answer_encoded))
 
                     temp_questions.append(question_encoded)
@@ -270,6 +274,7 @@ class Project_BERT_Data_Manager:
                         print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%")
 
             self.questions = torch.LongTensor(temp_questions)
+            self.questions = self.questions
             self.answers = temp_answers
             print("Loaded " + str() + "")
 

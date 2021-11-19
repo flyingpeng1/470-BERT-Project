@@ -1,5 +1,6 @@
-FROM nvidia/cuda:9.0-runtime-ubuntu16.04
+FROM nvidia/cuda:11.4.2-runtime-ubuntu20.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH /opt/conda/bin:$PATH
 
@@ -31,7 +32,7 @@ RUN pip install pip==21.0.1
 RUN pip install awscli
 RUN pip install packaging==21.1
 RUN pip install numpy
-RUN pip install torch==1.10.0+cu102 torchvision==0.11.1+cu102 torchaudio===0.10.0+cu102 -f https://download.pytorch.org/whl/cu102/torch_stable.html --default-timeout=100
+RUN pip install torch==1.10.0+cu110 torchvision==0.11.1+cu110 torchaudio===0.10.0+cu110 -f https://download.pytorch.org/whl/cu110/torch_stable.html
 RUN pip install --ignore-installed git+https://github.com/huggingface/transformers 
 RUN pip install sentencepiece
 RUN pip install protobuf
