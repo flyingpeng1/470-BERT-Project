@@ -1,4 +1,4 @@
-# Unnamed BERT Quizbowl System
+# QuizBERT - leveraging BERT to answer quizbowl questions
 
 ## Introduction
 This documentation is not complete, and needs to be worked on.
