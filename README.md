@@ -3,6 +3,7 @@
 This documentation is not complete, and needs to be worked on.
 The reference system documentations oulines basic commands.
 - Jack
+- Will
 
 # Reference System Documentation
 
