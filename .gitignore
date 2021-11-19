@@ -1,6 +1,7 @@
 /src/predictions.json
 /src/scores.json
 /src/data/*
+/src/cache/*
 /src/training_progress/*
 /data/*
 models/*

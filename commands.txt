@@ -2,6 +2,7 @@
 
 470-BERT-Project\src>python -m qanta.ProjectModel  # Run project model only
 470-BERT-Project\src>python -m qanta.ProjectDataLoader  # Run project data loader only
+470-BERT-Project\src>python -m qanta.ProjectServer  # Run project data loader only
 
 docker-compose up    # launch both the answer server and the evaluator
 docker-compose up bert_qb   # launch both the answer server

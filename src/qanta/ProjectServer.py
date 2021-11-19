@@ -188,7 +188,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         agent = BERTAgent(None, vocab)
         agent.load_model(resume_file)
     else:
-        agent = BERTAgent(BERTModel(data.get_answer_vector_length()), vocab)
+        agent = BERTAgent(BERTModel(data.get_answer_vector_length(), TRAIN_CACHE_LOCATION), vocab)
     
     print("Finished loading - commence training.")
 

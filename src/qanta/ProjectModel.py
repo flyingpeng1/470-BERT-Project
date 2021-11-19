@@ -21,17 +21,24 @@ from qanta.ProjectDataLoader import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+CACHE_LOCATION = "cache"
+
 #=======================================================================================================
 # The actual model that is managed by pytorch - still needs a name!
 #=======================================================================================================
 class BERTModel(nn.Module):
 
     # Initialize the parameters you'll need for the model.
-    def __init__(self, answer_vector_length):    
+    def __init__(self, answer_vector_length, cache=""):    
         super(BERTModel, self).__init__()
-        config = BertConfig()
+        if (not cache==""):
+            self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
+        else:
+            print("No pretraining cache provided: falling back to fresh bert model.")
+            config = BertConfig()
+            self.bert = BertModel(config).to(device)
+
         self.answer_vector_length = answer_vector_length
-        self.bert = BertModel(config).to(device)
         self.linear_output = nn.Linear(768, answer_vector_length).to(device)
         self.last_pooler_out = None
 
@@ -46,6 +53,9 @@ class BERTModel(nn.Module):
         if (self.last_pooler_out == None):
             raise ValueError("No pooler output cached - run through a guess first!")
         return self.last_pooler_out
+
+    def load_bert_pretained_weights(self, cache):
+        self.bert = self.bert
 
     def to_device(self, device):
         self.bert = self.bert.to(device)
@@ -143,10 +153,10 @@ if __name__ == '__main__':
     MAX_QUESTION_LENGTH = 412
     BATCH_SIZE = 1
 
-    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     vocab = load_vocab("../data/BERTTest.vocab")
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    model = BERTModel(data.get_answer_vector_length())
+    model = BERTModel(data.get_answer_vector_length(), CACHE_LOCATION)
     model.to_device(device)
     agent = BERTAgent(model, vocab)
 
