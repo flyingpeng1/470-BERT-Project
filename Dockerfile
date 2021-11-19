@@ -32,7 +32,7 @@ RUN pip install pip==21.0.1
 RUN pip install awscli
 RUN pip install packaging==21.1
 RUN pip install numpy
-RUN pip install torch==1.10.0+cu110 torchvision==0.11.1+cu110 torchaudio===0.10.0+cu110 -f https://download.pytorch.org/whl/cu110/torch_stable.html
+RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio===0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 RUN pip install --ignore-installed git+https://github.com/huggingface/transformers 
 RUN pip install sentencepiece
 RUN pip install protobuf
