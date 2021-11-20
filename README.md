@@ -1,4 +1,6 @@
 # QuizBERT - leveraging BERT to answer quizbowl questions
+By Jack, Will, Charlie, and Xavier
+
 
 ## Introduction
 This documentation is not complete, and needs to be worked on.
