@@ -40,13 +40,14 @@ class QuizBERT(nn.Module):
 
         self.answer_vector_length = answer_vector_length
         self.linear_output = nn.Linear(768, answer_vector_length).to(device)
+        self.softmax = nn.Softmax(dim=1).to(device)
         self.last_pooler_out = None
 
     # computes output vector using pooled BERT output
     def forward(self, x):
         self.last_pooler_out = self.bert(x).pooler_output
         ##print(bert_out.size())
-        return self.linear_output(self.last_pooler_out)
+        return self.softmax(self.linear_output(self.last_pooler_out))
 
     # return last pooler output vector - will be used in buzztrain
     def get_last_pooler_output(self):
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     BATCH_SIZE = 1
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    vocab = load_vocab("../data/BERTTest.vocab")
+    vocab = load_vocab("../data/QuizBERT.vocab")
     data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
     model = QuizBERT(data.get_answer_vector_length(), CACHE_LOCATION)
     model.to_device(device)
@@ -184,7 +185,8 @@ if __name__ == '__main__':
     #print(tokenizer.convert_ids_to_tokens(next_data[0][0])
     #print(vocab.decode(next_data[1]))
 
-    
+    print(agent.model_forward(next_data[0].to(device)))
+
     '''print(next_data[0].size())
     print(next_data[1].size())
 
@@ -206,8 +208,8 @@ if __name__ == '__main__':
 
     print(vocab.decode(agent.model_forward(next_data[0])))'''
 
-    agent.train_epoch(data, 50, "training_progress")
-    agent.save_model({}, "training_progress/test_model.model")
+    #agent.train_epoch(data, 50, "training_progress")
+    #agent.save_model({}, "training_progress/test_model.model")
 
     #agent.load_model("training_progress/test_model.model")
     #agent.train_epoch(data, 50, "training_progress")
