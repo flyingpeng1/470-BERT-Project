@@ -21,12 +21,15 @@ else:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 CACHE_LOCATION = "/src/cache"
-VOCAB_LOCATION = "/src/data/BERTTest.vocab"
-MODEL_LOCATION = "/src/data/BERTTest.model"
+VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
+MODEL_LOCATION = "/src/data/QuizBERT.model"
+TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
+TRAINING_PROGRESS_LOCATION = "/src/train_progress"
 
-TRAIN_CACHE_LOCATION = "cache"
-TRAIN_VOCAB_LOCATION = "../data/BERTTest.vocab"
-TRAINING_PROGRESS_LOCATION = "train_progress"
+LOCAL_CACHE_LOCATION = "cache"
+LOCAL_VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
+LOCAL_MODEL_LOCATION = "/src/data/QuizBERT.model"
+LOCAL_TRAINING_PROGRESS_LOCATION = "train_progress"
 
 MAX_QUESTION_LENGTH = 412
 BATCH_SIZE = 8
@@ -163,8 +166,8 @@ def web(host, port, vocab_file, model_file):
 
 # run to train the model - vocab_file and train_file are required!
 @cli.command()
-@click.option('--vocab_file', default=TRAIN_VOCAB_LOCATION)
-@click.option('--train_file', default="../data/qanta.train.2018.04.18.json")
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--train_file', default=TRAIN_FILE_LOCATION)
 @click.option('--data_limit', default=-1)
 @click.option('--epochs', default=1)
 @click.option('--resume', default=False, is_flag=True)
@@ -173,7 +176,7 @@ def web(host, port, vocab_file, model_file):
 @click.option('--manager_file', default="")
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
     print("Loading resources...")
-    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=TRAIN_CACHE_LOCATION)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
     data = None
     agent = None
@@ -188,7 +191,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         agent = BERTAgent(None, vocab)
         agent.load_model(resume_file)
     else:
-        agent = BERTAgent(BERTModel(data.get_answer_vector_length(), TRAIN_CACHE_LOCATION), vocab)
+        agent = BERTAgent(QuizBERT(data.get_answer_vector_length(), CACHE_LOCATION), vocab)
     
     print("Finished loading - commence training.")
 
@@ -197,17 +200,17 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
         current_epoch = data.full_epochs
-        agent.train_epoch(data, 50, "training_progress")
+        agent.train_epoch(data, 100, "training_progress")
 
     print("Training completed - " + str(epochs) + " full epochs")
 
 
 # Run to generate vocab file in specified location using specified data file.
 @cli.command()
-@click.option('--save_location', default='data/BERTTest.vocab')
-@click.option('--data_file', default='data/')
-def generate_vocab(save_location, data_file):
-    pass
+@click.option('--save_location', default=VOCAB_LOCATION)
+@click.option('--data_file', default=TRAIN_FILE_LOCATION)
+def vocab(save_location, data_file):
+    answer_vocab_generator(data_file, save_location)
 
 
 # Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine

@@ -32,11 +32,11 @@ class QuizBERT(nn.Module):
     def __init__(self, answer_vector_length, cache=""):    
         super(QuizBERT, self).__init__()
         if (not cache==""):
-            self.bert = QuizBERT.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
+            self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
         else:
             print("No pretraining cache provided: falling back to fresh bert model.")
             config = BertConfig()
-            self.bert = QuizBERT(config).to(device)
+            self.bert = BertModel(config).to(device)
 
         self.answer_vector_length = answer_vector_length
         self.linear_output = nn.Linear(768, answer_vector_length).to(device)
@@ -126,6 +126,10 @@ class BERTAgent():
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
         print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples / (epoch+1))))
+
+        # saves every epoch if specified...
+        if (save_freq == 100):
+            self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
