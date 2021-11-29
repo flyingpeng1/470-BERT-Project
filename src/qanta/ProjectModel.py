@@ -11,6 +11,7 @@ from flask import Flask, jsonify, request
 import torch
 import torch.nn as nn
 import numpy as np
+import math
 
 from transformers import BertTokenizer
 from transformers import BertModel
@@ -82,6 +83,7 @@ class BERTAgent():
         self.total_examples = 0
         self.checkpoint_loss = 0
         self.epoch_loss = 0
+        self.saved_recently = False
         # TODO - save this data correctly!!!
         self.model = None
         self.optimizer = None
@@ -124,13 +126,19 @@ class BERTAgent():
 
             if (int(data_manager.batch % 100) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
-            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq == 100)):
+
+            wants_to_save = int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq >= 100)
+            if (wants_to_save and not self.saved_recently):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
+                self.saved_recently=True
+            elif(not wants_to_save and self.saved_recently):
+                self.saved_recently=False
+                
         print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
 
         # saves every epoch if specified...
-        if (save_freq == 100):
-            self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
+        if (not save_freq > 100):
+            self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
@@ -149,10 +157,13 @@ class BERTAgent():
             self.checkpoint_loss += loss_val
             self.epoch_loss += loss_val
 
-        checkpoint = 64
+        checkpoint = 500
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
             loss_avg = self.checkpoint_loss / checkpoint
-            print("num exs: " + str(self.total_examples) + ", loss: " + str(loss_avg), flush = True)
+            if (loss_avg == 0):
+                print("NO LOSS - something is probably wrong!")
+            else:
+                print("num exs: " + str(self.total_examples) + ", log loss: " + str(math.log(loss_avg)), flush = True)
             self.checkpoint_loss = 0
 
     # used to determine whether or not the model is doing autograd and such when running forward
