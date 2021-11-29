@@ -77,7 +77,7 @@ class BERTAgent():
 
     def __init__(self, model, vocab):
         self.vocab = vocab
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.BCEWithLogitsLoss()##nn.MSELoss()
         self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0
         self.checkpoint_loss = 0
@@ -122,11 +122,11 @@ class BERTAgent():
             self.train_step(epoch, inputs.to(device), labels.to(device))
             torch.cuda.empty_cache()
 
-            if (data_manager.batch % 10 and not (save_freq == 100)):
+            if (int(data_manager.batch % 10) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
-            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
+            if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq == 100)):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
-        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples / (epoch+1))))
+        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))))
 
         # saves every epoch if specified...
         if (save_freq == 100):
@@ -143,8 +143,11 @@ class BERTAgent():
         self.optimizer.step()
         self.total_examples += 1
 
-        self.checkpoint_loss += loss.data.cpu().numpy()
-        self.epoch_loss += loss.data.cpu().numpy()
+        loss_val = loss.data.cpu().numpy()
+
+        if (not np.isnan(loss_val)):
+            self.checkpoint_loss += loss_val
+            self.epoch_loss += loss_val
 
         checkpoint = 64
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
@@ -179,13 +182,13 @@ if __name__ == '__main__':
     model.to_device(device)
     agent = BERTAgent(model, vocab)
 
-    data.load_data("../data/qanta.dev.2018.04.18.json", 10)
+    data.load_data("../data/qanta.dev.2018.04.18.json", 100)
     next_data = data.get_next()
 
     #print(tokenizer.convert_ids_to_tokens(next_data[0][0])
     #print(vocab.decode(next_data[1]))
 
-    print(agent.model_forward(next_data[0].to(device)))
+    #print(agent.model_forward(next_data[0].to(device)))
 
     '''print(next_data[0].size())
     print(next_data[1].size())
@@ -208,7 +211,7 @@ if __name__ == '__main__':
 
     print(vocab.decode(agent.model_forward(next_data[0])))'''
 
-    #agent.train_epoch(data, 50, "training_progress")
+    agent.train_epoch(data, 1000, "training_progress")
     #agent.save_model({}, "training_progress/test_model.model")
 
     #agent.load_model("training_progress/test_model.model")
