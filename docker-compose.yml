@@ -9,6 +9,13 @@ services:
       - ./src/:/src
       - ./data/:/src/data
     command: ["bash", "run.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   bert_eval:
     image: "docker.io/entilzha/quizbowl:0.1"
     volumes:
