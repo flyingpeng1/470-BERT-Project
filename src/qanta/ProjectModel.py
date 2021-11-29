@@ -32,7 +32,7 @@ class QuizBERT(nn.Module):
     def __init__(self, answer_vector_length, cache_dir=""):    
         super(QuizBERT, self).__init__()
         if (not cache==""):
-            self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
+            self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache_dir).to(device) #BERT-large uses too much VRAM
         else:
             print("No pretraining cache provided: falling back to fresh bert model.", flush = True)
             config = BertConfig()
