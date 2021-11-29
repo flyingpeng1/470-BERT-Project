@@ -106,7 +106,7 @@ class BERTAgent():
         load = pickle.load(open(file_name,'rb'))
         self.model = load["model"]
         self.model.to_device(device)
-        if ("metadata" in load and "epochs" in load["metadata"]):
+        if ("metadata" in load and "epoch" in load["metadata"]):
             self.vocab.full_epochs = load["metadata"]["epochs"] + 1
             print("Skipping potentially incomplete epoch: preparing next epoch")
 
@@ -133,7 +133,7 @@ class BERTAgent():
                 self.saved_recently=True
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
-                
+
         print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
 
         # saves every epoch if specified...
