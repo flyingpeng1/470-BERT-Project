@@ -143,8 +143,8 @@ class BERTAgent():
         self.optimizer.step()
         self.total_examples += 1
 
-        self.checkpoint_loss += loss.data.numpy()
-        self.epoch_loss += loss.data.numpy()
+        self.checkpoint_loss += loss.data.cpu().numpy()
+        self.epoch_loss += loss.data.cpu().numpy()
 
         checkpoint = 64
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
