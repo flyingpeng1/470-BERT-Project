@@ -34,7 +34,7 @@ class QuizBERT(nn.Module):
         if (not cache==""):
             self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
         else:
-            print("No pretraining cache provided: falling back to fresh bert model.")
+            print("No pretraining cache provided: falling back to fresh bert model.", flush = True)
             config = BertConfig()
             self.bert = BertModel(config).to(device)
 
@@ -92,12 +92,12 @@ class BERTAgent():
             self.model.to_device(device)
             self.optimizer = AdamW(model.parameters())
         else:
-            print("Agent is waiting for model load!")
+            print("Agent is waiting for model load!", flush = True)
 
     # Save model and its associated metadata 
     def save_model(self, metadata, save_location):
         pickle.dump({"model": self.model, "metadata":metadata}, open(save_location, "wb+"))
-        print("Saved model to: \"" + save_location + "\"")
+        print("Saved model to: \"" + save_location + "\"", flush = True)
 
     # Load the model and its associated metadata
     def load_model(self, file_name):
@@ -109,14 +109,14 @@ class BERTAgent():
             print("Skipping potentially incomplete epoch: preparing next epoch")
 
         self.optimizer = AdamW(self.model.parameters())
-        print("Loaded model from: \"" + file_name + "\"")
+        print("Loaded model from: \"" + file_name + "\"", flush = True)
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
     # save_freq
     def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
         self.epoch_loss = 0
-        print("Starting train epoch #" + str(epoch))
+        print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
             inputs, labels = data_manager.get_next_batch()
             self.train_step(epoch, inputs.to(device), labels.to(device))
@@ -126,7 +126,7 @@ class BERTAgent():
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq == 100)):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
-        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))))
+        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
 
         # saves every epoch if specified...
         if (save_freq == 100):
@@ -152,7 +152,7 @@ class BERTAgent():
         checkpoint = 64
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
             loss_avg = self.checkpoint_loss / checkpoint
-            print('num exs: %d, loss: %.5f' % (self.total_examples, loss_avg))
+            print('num exs: %d, loss: %.5f' % (self.total_examples, loss_avg), flush = True)
             self.checkpoint_loss = 0
 
     # used to determine whether or not the model is doing autograd and such when running forward
@@ -162,7 +162,7 @@ class BERTAgent():
         elif (mode == "train"):
             self.model.train()
         else:
-            raise ValueError("No model mode \"" + mode + "\" exists")
+            raise ValueError("No model mode \"" + mode + "\" exists", flush = True)
 
     # Computes forward on the model - I used this for debugging
     def model_forward(self, input_tensor):

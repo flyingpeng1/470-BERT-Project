@@ -165,7 +165,7 @@ def analyze_dataset(filename):
 # Generates a vocab file using the answer data contained within file_name and saves it to save_location
 #=======================================================================================================
 def answer_vocab_generator(file_name, save_location):
-    print("Preparing to generate answer vocabulary file")
+    print("Preparing to generate answer vocabulary file", flush = True)
     
     with open(file_name) as json_data:
         page_set = {} # I didn't use set because I wanted to keep the order of the vocab consistent with the data load order
@@ -173,7 +173,7 @@ def answer_vocab_generator(file_name, save_location):
         data = json.load(json_data)
         qs = data["questions"]
 
-        print("working...")
+        print("working...", flush = True)
 
         for q in qs:
             page = q['page']
@@ -182,7 +182,7 @@ def answer_vocab_generator(file_name, save_location):
 
         vocab = AnswerVocab(len(page_set.keys()), list(page_set.keys()))
         pickle.dump(vocab, open(save_location, "wb+"))
-        print("Saved vocab file to: \"" + save_location + "\"")
+        print("Saved vocab file to: \"" + save_location + "\"", flush = True)
 
 #=======================================================================================================
 # loads a vocab file from location specified.
@@ -195,13 +195,13 @@ def load_vocab(file_name):
 #=======================================================================================================
 def save_data_manager(manager, save_location):
     pickle.dump(manager, open(save_location, "wb+"))
-    print("Saved data manager file to: \"" + save_location + "\"")
+    print("Saved data manager file to: \"" + save_location + "\"", flush = True)
 
 #=======================================================================================================
 # load a previously saved pre-transformed dataset.
 #=======================================================================================================
 def load_data_manager(file_name):
-    print("Loading data manager - this may take a while...")
+    print("Loading data manager - this may take a while...", flush = True)
     return pickle.load(open(file_name,'rb'))
 
 #=======================================================================================================
@@ -271,12 +271,12 @@ class Project_BERT_Data_Manager:
 
                     self.num_questions += 1
                     if (self.num_questions%1000 == 0):
-                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%")
+                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
             self.answers = temp_answers
-            print("Loaded " + str() + "")
+            print("Loaded " + str() + "", flush = True)
 
     def get_next(self):
         self.epoch()

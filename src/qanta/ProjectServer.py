@@ -175,7 +175,7 @@ def web(host, port, vocab_file, model_file):
 @click.option('--preloaded_manager', default=False, is_flag=True)
 @click.option('--manager_file', default="")
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
-    print("Loading resources...")
+    print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
     data = None
@@ -193,7 +193,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     else:
         agent = BERTAgent(QuizBERT(data.get_answer_vector_length(), CACHE_LOCATION), vocab)
     
-    print("Finished loading - commence training.")
+    print("Finished loading - commence training.", flush = True)
 
     agent.model_set_mode("train")
 
@@ -202,7 +202,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         current_epoch = data.full_epochs
         agent.train_epoch(data, 100, "training_progress")
 
-    print("Training completed - " + str(epochs) + " full epochs")
+    print("Training completed - " + str(epochs) + " full epochs", flush = True)
 
 
 # Run to generate vocab file in specified location using specified data file.
