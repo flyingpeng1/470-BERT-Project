@@ -29,7 +29,7 @@ CACHE_LOCATION = "cache"
 class QuizBERT(nn.Module):
 
     # Initialize the parameters you'll need for the model.
-    def __init__(self, answer_vector_length, cache=""):    
+    def __init__(self, answer_vector_length, cache_dir=""):    
         super(QuizBERT, self).__init__()
         if (not cache==""):
             self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache).to(device) #BERT-large uses too much VRAM
