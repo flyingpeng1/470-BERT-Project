@@ -77,7 +77,7 @@ class BERTAgent():
 
     def __init__(self, model, vocab):
         self.vocab = vocab
-        self.loss_fn = nn.BCEWithLogitsLoss()##nn.MSELoss()
+        self.loss_fn = nn.BCELoss()##nn.MSELoss()
         self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0
         self.checkpoint_loss = 0
@@ -122,7 +122,7 @@ class BERTAgent():
             self.train_step(epoch, inputs.to(device), labels.to(device))
             torch.cuda.empty_cache()
 
-            if (int(data_manager.batch % 10) == 0):
+            if (int(data_manager.batch % 100) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq == 100)):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")

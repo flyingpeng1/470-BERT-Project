@@ -175,7 +175,8 @@ def web(host, port, vocab_file, model_file):
 @click.option('--resume_file', default="")
 @click.option('--preloaded_manager', default=False, is_flag=True)
 @click.option('--manager_file', default=DATA_MANAGER_LOCATION)
-def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
+@click.option('--save_regularity', default=20)
+def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
@@ -202,7 +203,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
         current_epoch = data.full_epochs
-        agent.train_epoch(data, 100, "training_progress")
+        agent.train_epoch(data, save_regularity, "training_progress")
 
     print("Training completed - " + str(epochs) + " full epochs", flush = True)
 
