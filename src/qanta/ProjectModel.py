@@ -122,7 +122,7 @@ class BERTAgent():
             self.train_step(epoch, inputs.to(device), labels.to(device))
             torch.cuda.empty_cache()
 
-            if (data_manager.batch % 10):
+            if (data_manager.batch % 10 and not (save_freq == 100)):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
             if (int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1):
                 self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")

@@ -32,7 +32,7 @@ LOCAL_MODEL_LOCATION = "/src/data/QuizBERT.model"
 LOCAL_TRAINING_PROGRESS_LOCATION = "train_progress"
 
 MAX_QUESTION_LENGTH = 412
-BATCH_SIZE = 4
+BATCH_SIZE = 6
 
 #=======================================================================================================
 # Combines guesser and buzzer outputs
