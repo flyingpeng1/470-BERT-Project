@@ -152,7 +152,7 @@ class BERTAgent():
         checkpoint = 64
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
             loss_avg = self.checkpoint_loss / checkpoint
-            print('num exs: %d, loss: %.5f' % (self.total_examples, loss_avg), flush = True)
+            print("num exs: " + str(self.total_examples) + ", loss: " + str(loss_avg), flush = True)
             self.checkpoint_loss = 0
 
     # used to determine whether or not the model is doing autograd and such when running forward
