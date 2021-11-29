@@ -214,7 +214,7 @@ def vocab(save_location, data_file):
 
 # Run to check if cuda is available.
 @cli.command()
-def cudatest(save_location, data_file):
+def cudatest():
     print(device)
 
 # Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
