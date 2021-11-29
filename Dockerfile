@@ -25,8 +25,6 @@ RUN apt-get install -y curl grep sed dpkg && \
 RUN apt update
 RUN apt install -y vim build-essential
 
-RUN spt install cuda-tool-kit
-
 COPY environment.yaml /
 RUN conda env create -f environment.yaml || conda env update -f environment.yaml
 RUN conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
