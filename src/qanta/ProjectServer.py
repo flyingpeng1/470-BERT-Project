@@ -212,6 +212,10 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 def vocab(save_location, data_file):
     answer_vocab_generator(data_file, save_location)
 
+# Run to check if cuda is available.
+@cli.command()
+def cudatest(save_location, data_file):
+    print(device)
 
 # Run once to download qanta data to data/. Runs inside the docker container, but results save to host machine
 @cli.command()
