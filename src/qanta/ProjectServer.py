@@ -192,7 +192,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 
     if (resume):
         agent = BERTAgent(None, vocab)
-        agent.load_model(resume_file)
+        agent.load_model(resume_file, data)
     else:
         agent = BERTAgent(QuizBERT(data.get_answer_vector_length(), cache_dir=CACHE_LOCATION), vocab)
     

@@ -102,16 +102,18 @@ class BERTAgent():
         print("Saved model to: \"" + save_location + "\"", flush = True)
 
     # Load the model and its associated metadata
-    def load_model(self, file_name):
+    def load_model(self, file_name, data_manager=None):
         load = pickle.load(open(file_name,'rb'))
         self.model = load["model"]
         self.model.to_device(device)
-        if ("metadata" in load and "epoch" in load["metadata"]):
-            self.vocab.full_epochs = load["metadata"]["epoch"] + 1
+        if ("metadata" in load and "epoch" in load["metadata"] and not data_manager == None):
+            data_manager.full_epochs = load["metadata"]["epoch"] + 1
             if ("completed" in load["metadata"] and not load["metadata"]["completed"]):
                 print("Skipped incomplete epoch: preparing next epoch")
             elif(not "completed" in load["metadata"]):
                 print("Could not find completion data in model - epoch may have been skipped")
+        else:
+            print("No metadata found / no data manager provided - starting from epoch 0")
 
         self.optimizer = AdamW(self.model.parameters())
         print("Loaded model from: \"" + file_name + "\"", flush = True)
