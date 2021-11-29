@@ -107,8 +107,11 @@ class BERTAgent():
         self.model = load["model"]
         self.model.to_device(device)
         if ("metadata" in load and "epoch" in load["metadata"]):
-            self.vocab.full_epochs = load["metadata"]["epochs"] + 1
-            print("Skipping potentially incomplete epoch: preparing next epoch")
+            self.vocab.full_epochs = load["metadata"]["epoch"] + 1
+            if ("completed" in load["metadata"] and not load["metadata"]["completed"]):
+                print("Skipped incomplete epoch: preparing next epoch")
+            elif(not "completed" in load["metadata"]):
+                print("Could not find completion data in model - epoch may have been skipped")
 
         self.optimizer = AdamW(self.model.parameters())
         print("Loaded model from: \"" + file_name + "\"", flush = True)
@@ -122,23 +125,24 @@ class BERTAgent():
         while epoch == data_manager.full_epochs:
             inputs, labels = data_manager.get_next_batch()
             self.train_step(epoch, inputs.to(device), labels.to(device))
-            torch.cuda.empty_cache()
+            torch.cuda.empty_cache() # clear old tensors from VRAM
 
             if (int(data_manager.batch % 100) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
 
+            # saves mid-epoch at supplied interval
             wants_to_save = int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq >= 100)
             if (wants_to_save and not self.saved_recently):
-                self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
+                self.save_model({"epoch":epoch, "completed":False}, save_loc + "/Model_epoch_" + str(epoch) + "_progress_" + str(int(data_manager.get_epoch_completion())) + "%.model")
                 self.saved_recently=True
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
 
         print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
 
-        # saves every epoch if specified...
+        # saves every epoch if allowed
         if (not save_freq > 100):
-            self.save_model({"epoch":epoch}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
+            self.save_model({"epoch":epoch, "completed":True}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
 
     # Runs training step on one batch of tensors
     def train_step(self, epoch, inputs, labels):
