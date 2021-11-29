@@ -27,12 +27,14 @@ RUN apt install -y vim build-essential
 
 COPY environment.yaml /
 RUN conda env create -f environment.yaml || conda env update -f environment.yaml
+RUN bash -c 'echo -e conda --version'
+RUN bash -c 'echo -e conda search cudatoolkit -c pytorch -c nvidia'
+RUN conda install pytorch torchvision torchaudio cudatoolkit=11.* -c pytorch -c nvidia
 
 RUN pip install pip==21.0.1
 RUN pip install awscli
 RUN pip install packaging==21.1
 RUN pip install numpy
-RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio===0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 RUN pip install --ignore-installed git+https://github.com/huggingface/transformers 
 RUN pip install sentencepiece
 RUN pip install protobuf

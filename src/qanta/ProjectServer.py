@@ -218,7 +218,7 @@ def vocab(save_location, data_file):
 @click.option('--local-qanta-prefix', default='data/')
 #@click.option('--retrieve-paragraphs', default=False, is_flag=True) #retrieve_paragraphs
 def download(local_qanta_prefix):
-    util.download(local_qanta_prefix, retrieve_paragraphs)
+    util.download(local_qanta_prefix, False)
 
 
 if __name__ == '__main__':
