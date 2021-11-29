@@ -184,6 +184,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 
     if (preloaded_manager):
         data = load_data_manager(manager_file)
+        data.batch_size = BATCH_SIZE # set the correct batch size
     else:
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
         data.load_data(train_file, data_limit)
@@ -222,7 +223,7 @@ def vocab(save_location, data_file):
 def makemanager(vocab_location, save_location, data_file, limit):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
-    loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
+    loader = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
     loader.load_data(data_file, limit)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
