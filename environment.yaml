@@ -1,7 +1,7 @@
 name: base
 dependencies:
   - scipy
-  - scikit-learn==0.19.*
+  - scikit-learn
   - nltk
   - requests
   - click
