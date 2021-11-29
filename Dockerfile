@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.4.2-runtime-ubuntu20.04
+FROM nvidia/cuda:11.3.1-devel-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -8,7 +8,7 @@ RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificate
       libglib2.0-0 libxext6 libsm6 libxrender1 \
       git mercurial subversion
 
-RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-5.3.0-Linux-x86_64.sh -O ~/anaconda.sh && \
+RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2021.11-Linux-x86_64.sh -O ~/anaconda.sh && \
       /bin/bash ~/anaconda.sh -b -p /opt/conda && \
       rm ~/anaconda.sh && \
       ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
@@ -25,11 +25,11 @@ RUN apt-get install -y curl grep sed dpkg && \
 RUN apt update
 RUN apt install -y vim build-essential
 
+RUN spt install cuda-tool-kit
+
 COPY environment.yaml /
 RUN conda env create -f environment.yaml || conda env update -f environment.yaml
-RUN bash -c 'echo -e conda --version'
-RUN bash -c 'echo -e conda search cudatoolkit -c pytorch -c nvidia'
-RUN conda install pytorch torchvision torchaudio cudatoolkit=11.* -c pytorch -c nvidia
+RUN conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 
 RUN pip install pip==21.0.1
 RUN pip install awscli
