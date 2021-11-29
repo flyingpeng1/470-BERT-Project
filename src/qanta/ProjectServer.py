@@ -218,11 +218,12 @@ def vocab(save_location, data_file):
 @click.option('--vocab_location', default=VOCAB_LOCATION)
 @click.option('--save_location', default=DATA_MANAGER_LOCATION)
 @click.option('--data_file', default=TRAIN_FILE_LOCATION)
-def makemanager(vocab_location, save_location, data_file):
+@click.option('--limit', default=-1)
+def makemanager(vocab_location, save_location, data_file, limit):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
-    loader.load_data(data_file)
+    loader.load_data(data_file, limit)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
 # Run to check if cuda is available.
