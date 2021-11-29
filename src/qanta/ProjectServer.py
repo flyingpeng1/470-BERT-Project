@@ -22,6 +22,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 CACHE_LOCATION = "/src/cache"
 VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
+DATA_MANAGER_LOCATION = "/src/data/QBERT_Data.manager"
 MODEL_LOCATION = "/src/data/QuizBERT.model"
 TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
 TRAINING_PROGRESS_LOCATION = "/src/train_progress"
@@ -173,7 +174,7 @@ def web(host, port, vocab_file, model_file):
 @click.option('--resume', default=False, is_flag=True)
 @click.option('--resume_file', default="")
 @click.option('--preloaded_manager', default=False, is_flag=True)
-@click.option('--manager_file', default="")
+@click.option('--manager_file', default=DATA_MANAGER_LOCATION)
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
@@ -191,7 +192,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         agent = BERTAgent(None, vocab)
         agent.load_model(resume_file)
     else:
-        agent = BERTAgent(QuizBERT(data.get_answer_vector_length(), CACHE_LOCATION), vocab)
+        agent = BERTAgent(QuizBERT(data.get_answer_vector_length(), cache_dir=CACHE_LOCATION), vocab)
     
     print("Finished loading - commence training.", flush = True)
 
@@ -211,6 +212,18 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 @click.option('--data_file', default=TRAIN_FILE_LOCATION)
 def vocab(save_location, data_file):
     answer_vocab_generator(data_file, save_location)
+
+# Run to generate data manager file in specified location using specified data file.
+@cli.command()
+@click.option('--vocab_location', default=VOCAB_LOCATION)
+@click.option('--save_location', default=DATA_MANAGER_LOCATION)
+@click.option('--data_file', default=TRAIN_FILE_LOCATION)
+def makemanager(vocab_location, save_location, data_file):
+    vocab = load_vocab(vocab_location)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
+    loader.load_data(data_file)
+    save_data_manager(loader, DATA_MANAGER_LOCATION)
 
 # Run to check if cuda is available.
 @cli.command()

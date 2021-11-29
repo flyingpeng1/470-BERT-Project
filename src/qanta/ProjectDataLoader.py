@@ -30,6 +30,32 @@ class AnswerVocab:
         self.UNK_IDX = 0
         self.list_template = None
 
+    def get_indexes(self, text_answers):
+        idxs = []
+        for a in text_answers:
+            idx = -1
+            try:
+                idx = self.answers.index(a)
+            except:
+                pass
+
+            # if it is not in the vocab, go with the UNK index
+            if (idx == -1):
+                idxs.append(self.UNK_IDX)
+            else:
+                idxs.append(idx)
+
+        return idxs
+
+    def encode_from_indexes(self, idxs):
+        self.list_template = [0] * (self.num_answers)
+        encoded = []
+        for a in idxs:
+            v = self.list_template.copy()
+            v[a] = 1
+            encoded.append(v)
+        return torch.LongTensor(encoded)
+
     # returns the answers in tensor form
     def encode(self, text_answers):
         self.list_template = [0] * (self.num_answers)
@@ -62,6 +88,21 @@ class AnswerVocab:
             answers.append(self.answers[a.tolist().index(max_value)])
         return answers
 
+    # returns the answers closest to the vectors
+    def decode_top_n(self, ids, n):
+        answers = []
+        for a in ids:
+            # Checking to make sure that the vector is the correct size, otherwise this doesn't make any sense
+            if (len(a) != self.num_answers):
+                raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers))
+            array = a
+            ind = np.argpartition(array, -n)[-n:]
+            answ = [self.answers[x] for x in ind.tolist()]
+            val = array[ind]
+
+            answers.append(list(zip(answ, val)))
+        answers[0].sort(reverse=True, key=lambda x: x[1])
+        return answers[0]
 
 # creates a map of the sums of all the pages (answers) in a given file
 def count_pages(self, file_name):
@@ -209,12 +250,13 @@ def load_data_manager(file_name):
 #=======================================================================================================
 def encode_question(question, tokenizer, maximum_question_length):
     question_encoded = tokenizer.encode(tokenizer.tokenize(question))
+    qlen = len(question_encoded)
 
     # Forcing question to be exactly the right length for BERT to accept
-    if (len(question_encoded) > maximum_question_length):
+    if (qlen > maximum_question_length):
         question_encoded = question_encoded[:maximum_question_length]
-    elif (len(question_encoded) < maximum_question_length):
-        question_encoded.extend([0] * (maximum_question_length - len(question_encoded)))
+    elif (qlen < maximum_question_length):
+        question_encoded.extend([0] * (maximum_question_length - qlen))
 
     return question_encoded
 
@@ -228,7 +270,7 @@ class Project_BERT_Data_Manager:
         self.answer_vocab = answer_vocab
         self.num_questions = 0
         self.questions = []
-        self.answers = []
+        self.answer_indexes = []
         self.current = 0
         self.batch = 0
         self.full_epochs = 0
@@ -243,6 +285,7 @@ class Project_BERT_Data_Manager:
             qs = data["questions"]
             questions_length = len(qs)
             number = limit
+            temp_answers = []
 
             for q in qs:
                 if (limit > 0 and limit <= self.num_questions):     # stop loading when has enough
@@ -258,14 +301,16 @@ class Project_BERT_Data_Manager:
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
 
                     question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
-                    answer_encoded = self.answer_vocab.encode([answer])
-                    
-                    if (temp_answers == None):
-                        temp_answers = answer_encoded
-                        temp_answers = temp_answers
-                    else:
-                        answer_encoded = answer_encoded
-                        temp_answers = torch.cat((temp_answers, answer_encoded))
+                    temp_answers.append(answer)
+
+                    #answer_encoded = self.answer_vocab.encode([answer])
+
+                    #if (temp_answers == None):
+                    #    temp_answers = answer_encoded
+                    #    temp_answers = temp_answers
+                    #else:
+                    #    answer_encoded = answer_encoded
+                    #    temp_answers = torch.cat((temp_answers, answer_encoded))
 
                     temp_questions.append(question_encoded)
 
@@ -275,23 +320,24 @@ class Project_BERT_Data_Manager:
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
-            self.answers = temp_answers
+            self.answer_indexes = self.answer_vocab.get_indexes(temp_answers) # turn all of the answers into indexes
+
             print("Loaded " + str() + "", flush = True)
 
     def get_next(self):
         self.epoch()
-        element = (self.questions[self.current:self.current+1], self.answers[self.current:self.current+1])
+        element = (self.questions[self.current:self.current+1], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:self.current+1]))
         self.current += 1
         return element
 
     def get_next_batch(self):
         if (self.current + self.batch_size > self.num_questions):
-            batch = (self.questions[self.current:], self.answers[self.current:])
+            batch = (self.questions[self.current:], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:]))
             self.current = self.num_questions
             self.epoch()
             return batch
         else:
-            batch = (self.questions[self.current:self.current+self.batch_size], self.answers[self.current:self.current+self.batch_size])
+            batch = (self.questions[self.current:self.current+self.batch_size], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:self.current+self.batch_size]))
             self.current += self.batch_size
             self.batch += 1
             return batch
@@ -319,22 +365,28 @@ class Project_BERT_Data_Manager:
 
 # used to test this file
 if __name__ == '__main__':
-    answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")
+    #answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")
     
-    #vocab = load_vocab("data/qanta.vocab")
-    #tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
-    #loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
+    vocab = load_vocab("../data/QuizBERT.vocab")
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir="cache")
+    loader = Project_BERT_Data_Manager(412, vocab, 10, tokenizer)
     #test_answers = count_pages("../data/qanta.test.2018.04.18.json")
     #train_answers = count_pages("../data/qanta.train.2018.04.18.json")
     
 
-    #loader.load_data("../data/qanta.train.2018.04.18.json", 1)
+    loader.load_data("../data/qanta.train.2018.04.18.json", 1000)
     #data = loader.get_next()
-    #decode = vocab.decode(data[1])
+    
+    #data[1][0][0] = 10
+    #data[1][0][5] = 11
+    #data[1][0][7] = 12
+
+    #print(data)
+    #decode = vocab.decode_top_n(data[1], 10)
     #print(decode)
 
 
-    #save_data_manager(loader, "data/train.manager")
+    save_data_manager(loader, "../data/QBERT_Data.manager")
     #loader = load_data_manager("data/train.manager")
     #print(loader.get_next_batch())
 
