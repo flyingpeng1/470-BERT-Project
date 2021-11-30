@@ -261,6 +261,42 @@ def encode_question(question, tokenizer, maximum_question_length):
     return question_encoded
 
 #=======================================================================================================
+# Helper that splits a string into sentences.
+#=======================================================================================================
+alphabets= "([A-Za-z])"
+prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
+suffixes = "(Inc|Ltd|Jr|Sr|Co)"
+starters = "(Mr|Mrs|Ms|Dr|He\s|She\s|It\s|They\s|Their\s|Our\s|We\s|But\s|However\s|That\s|This\s|Wherever)"
+acronyms = "([A-Z][.][A-Z][.](?:[A-Z][.])?)"
+websites = "[.](com|net|org|io|gov)"
+
+def split_into_sentences(text):
+    text = " " + text + "  "
+    text = text.replace("\n"," ")
+    text = re.sub(prefixes,"\\1<prd>",text)
+    text = re.sub(websites,"<prd>\\1",text)
+    if "Ph.D" in text: text = text.replace("Ph.D.","Ph<prd>D<prd>")
+    text = re.sub("\s" + alphabets + "[.] "," \\1<prd> ",text)
+    text = re.sub(acronyms+" "+starters,"\\1<stop> \\2",text)
+    text = re.sub(alphabets + "[.]" + alphabets + "[.]" + alphabets + "[.]","\\1<prd>\\2<prd>\\3<prd>",text)
+    text = re.sub(alphabets + "[.]" + alphabets + "[.]","\\1<prd>\\2<prd>",text)
+    text = re.sub(" "+suffixes+"[.] "+starters," \\1<stop> \\2",text)
+    text = re.sub(" "+suffixes+"[.]"," \\1<prd>",text)
+    text = re.sub(" " + alphabets + "[.]"," \\1<prd>",text)
+    if "”" in text: text = text.replace(".”","”.")
+    if "\"" in text: text = text.replace(".\"","\".")
+    if "!" in text: text = text.replace("!\"","\"!")
+    if "?" in text: text = text.replace("?\"","\"?")
+    text = text.replace(".",".<stop>")
+    text = text.replace("?","?<stop>")
+    text = text.replace("!","!<stop>")
+    text = text.replace("<prd>",".")
+    sentences = text.split("<stop>")
+    sentences = sentences[:-1]
+    sentences = [s.strip() for s in sentences]
+    return sentences
+
+#=======================================================================================================
 # Manages loading, transforming, and providing data to the model
 #=======================================================================================================
 class Project_BERT_Data_Manager:
@@ -276,7 +312,7 @@ class Project_BERT_Data_Manager:
         self.full_epochs = 0
         self.batch_size = batch_size
 
-    def load_data(self, file_name, limit):
+    def load_data(self, file_name, limit, split_sentences=False):
         with open(file_name) as json_data:
             temp_questions = []
             temp_answers = None
@@ -284,39 +320,29 @@ class Project_BERT_Data_Manager:
             data = json.load(json_data)
             qs = data["questions"]
             questions_length = len(qs)
-            number = limit
             temp_answers = []
 
             for q in qs:
                 if (limit > 0 and limit <= self.num_questions):     # stop loading when has enough
                     break
-                text = q["text"]               
-                answer = q["page"]             
-                #answer = re.sub(r'\[or .*', '', q["answer"])    # removing secondary choices from answers
-                #answer = re.sub(r'\(or .*', '', answer)         # removing secondary choices from answers
-                #answer = re.sub(r'\[accept .*', '', answer)     # removing secondary choices from answers
-                #answer = re.sub(r'\[prompt .*', '', answer)     # removing secondary choices from answers
-                #answer = re.sub(r'\[be .*', '', answer)         # removing secondary choices from answers
+
+                text = q["text"]
+                answer = q["page"]
 
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
 
-                    question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
-                    temp_answers.append(answer)
+                    sentences = split_into_sentences(text)
+                    # iterate through each sentence if split_sentences=True, else use all sentences at once
+                    i = range(len(sentences)) if split_sentences else [len(sentences)-1]
+                    for s in i:
+                        partial_text = ' '.join(sentences[:s+1])
+                        question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
+                        temp_answers.append(answer)
+                        temp_questions.append(question_encoded)
 
-                    #answer_encoded = self.answer_vocab.encode([answer])
-
-                    #if (temp_answers == None):
-                    #    temp_answers = answer_encoded
-                    #    temp_answers = temp_answers
-                    #else:
-                    #    answer_encoded = answer_encoded
-                    #    temp_answers = torch.cat((temp_answers, answer_encoded))
-
-                    temp_questions.append(question_encoded)
-
-                    self.num_questions += 1
-                    if (self.num_questions%1000 == 0):
-                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
+                        self.num_questions += 1
+                        if (self.num_questions%1000 == 0):
+                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
@@ -374,7 +400,8 @@ if __name__ == '__main__':
     #train_answers = count_pages("../data/qanta.train.2018.04.18.json")
     
 
-    loader.load_data("../data/qanta.train.2018.04.18.json", 1000)
+    loader.load_data("../data/qanta.dev.2018.04.18.json", 10, split_sentences=True)
+    print(list(loader.questions))
     #data = loader.get_next()
     
     #data[1][0][0] = 10
@@ -386,7 +413,7 @@ if __name__ == '__main__':
     #print(decode)
 
 
-    save_data_manager(loader, "../data/QBERT_Data.manager")
+    # save_data_manager(loader, "../data/QBERT_Data.manager")
     #loader = load_data_manager("data/train.manager")
     #print(loader.get_next_batch())
 
