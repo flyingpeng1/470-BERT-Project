@@ -46,7 +46,7 @@ class QuizBERT(nn.Module):
         self.last_pooler_out = None
 
         # freezes N layers
-        n=11
+        n=12
         modules = [self.bert.embeddings, *self.bert.encoder.layer[:n]]
         for module in modules:
             for param in module.parameters():
