@@ -181,7 +181,7 @@ class BERTAgent():
             self.checkpoint_loss += loss_val
             self.epoch_loss += loss_val
 
-        checkpoint = 500
+        checkpoint = 3000
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
             #total = 0.0
             #numer = 0.0

@@ -99,3 +99,11 @@ run the model to answer questions and buzz
   `--model_file "path to model file to use"`
   `--host`
   `--port`
+
+
+
+some commands I like to use - Jack
+
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 40
+python -m qanta.ProjectServer web --vocab_file ../data/QuizBERTSmall.vocab --model_file ../data/QuizBERT.model
+python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json

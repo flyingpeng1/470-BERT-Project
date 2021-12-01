@@ -52,7 +52,7 @@ class AnswerVocab:
         encoded = []
         for a in idxs:
             v = self.list_template.copy()
-            v[a] = 1
+            v[a] = 100000
             encoded.append(v)
         return torch.LongTensor(encoded)
 
@@ -249,8 +249,13 @@ def load_data_manager(file_name):
 # Helper that takes a question and the tokenizer, and encodes the question properly.
 #=======================================================================================================
 def encode_question(question, tokenizer, maximum_question_length):
-    question_encoded = tokenizer.encode(tokenizer.tokenize(question))
     qlen = len(question_encoded)
+    question_encoded = []
+
+    if (qlen != 0):
+        question_encoded = tokenizer.encode(tokenizer.tokenize(question))
+    else:
+
 
     # Forcing question to be exactly the right length for BERT to accept
     if (qlen > maximum_question_length):
@@ -331,18 +336,27 @@ class Project_BERT_Data_Manager:
 
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
 
-                    sentences = split_into_sentences(text)
-                    # iterate through each sentence if split_sentences=True, else use all sentences at once
-                    i = range(len(sentences)) if split_sentences else [len(sentences)-1]
-                    for s in i:
-                        partial_text = ' '.join(sentences[:s+1])
-                        question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
+                    if (split_sentences):
+                        sentences = split_into_sentences(text)
+                        # iterate through each sentence if split_sentences=True, else use all sentences at once
+                        i = range(len(sentences)) if split_sentences else [len(sentences)-1]
+                        for s in i:
+                            partial_text = ' '.join(sentences[:s+1])
+                            question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
+                         temp_answers.append(answer)
+                         temp_questions.append(question_encoded)
+
+                        self.num_questions += 1
+                        if (self.num_questions%1000 == 0):
+                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
+                    else:
+                        question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
                         temp_answers.append(answer)
                         temp_questions.append(question_encoded)
 
                         self.num_questions += 1
                         if (self.num_questions%1000 == 0):
-                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
+                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)   
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
