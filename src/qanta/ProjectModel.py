@@ -37,18 +37,26 @@ class QuizBERT(nn.Module):
         else:
             print("No pretraining cache provided: falling back to fresh bert model.", flush = True)
             config = BertConfig()
+
             self.bert = BertModel(config).to(device)
 
         self.answer_vector_length = answer_vector_length
         self.linear_output = nn.Linear(768, answer_vector_length).to(device)
-        self.softmax = nn.Softmax(dim=1).to(device)
+        self.sigmoid = nn.Sigmoid().to(device)
         self.last_pooler_out = None
+
+        # freezes N layers
+        n=11
+        modules = [self.bert.embeddings, *self.bert.encoder.layer[:n]]
+        for module in modules:
+            for param in module.parameters():
+                param.requires_grad = False
 
     # computes output vector using pooled BERT output
     def forward(self, x):
         self.last_pooler_out = self.bert(x).pooler_output
-        ##print(bert_out.size())
-        return self.softmax(self.linear_output(self.last_pooler_out))
+        #print(next(self.bert.encoder.layer[11].parameters()))
+        return self.sigmoid(self.linear_output(self.last_pooler_out))
 
     # return last pooler output vector - will be used in buzztrain
     def get_last_pooler_output(self):
@@ -64,11 +72,13 @@ class QuizBERT(nn.Module):
         self.linear_output = self.linear_output.to(device)
         self = self.to(device)
 
-    # Unimplemented
     def evaluate(self, data):
-        # TODO
         with torch.no_grad():
-            return 0
+            pass
+                        
+
+
+
 
 #=======================================================================================================
 # This will handle the training and evaluating of the model.
@@ -92,7 +102,7 @@ class BERTAgent():
         if (not model == None):
             self.model = model
             self.model.to_device(device)
-            self.optimizer = AdamW(model.parameters())
+            self.optimizer = AdamW(model.parameters(), lr=0.0005)
         else:
             print("Agent is waiting for model load!", flush = True)
 
@@ -104,6 +114,7 @@ class BERTAgent():
     # Load the model and its associated metadata
     def load_model(self, file_name, data_manager=None):
         load = pickle.load(open(file_name,'rb'))
+        print(load)
         self.model = load["model"]
         self.model.to_device(device)
         if ("metadata" in load and "epoch" in load["metadata"] and not data_manager == None):
@@ -123,10 +134,14 @@ class BERTAgent():
     def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
         self.epoch_loss = 0
+        steps = 0.0
+        step_avg = 0.0
+
         print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
+            steps+=1
             inputs, labels = data_manager.get_next_batch()
-            self.train_step(epoch, inputs.to(device), labels.to(device))
+            step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
             if (int(data_manager.batch % 100) == 0):
@@ -141,13 +156,14 @@ class BERTAgent():
                 self.saved_recently=False
 
         print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
+        print("train accuracy: " + str((step_avg/steps)*100) + "%")
 
         # saves every epoch if allowed
         if (not save_freq > 100):
             self.save_model({"epoch":epoch, "completed":True}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
 
     # Runs training step on one batch of tensors
-    def train_step(self, epoch, inputs, labels):
+    def train_step(self, epoch, inputs, labels, batch_size):
         self.optimizer.zero_grad()
 
         prediction = self.model(inputs)
@@ -157,6 +173,8 @@ class BERTAgent():
         self.optimizer.step()
         self.total_examples += 1
 
+        acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), torch.argmax(labels, dim=1))))/batch_size
+
         loss_val = loss.data.cpu().numpy()
 
         if (not np.isnan(loss_val)):
@@ -165,12 +183,26 @@ class BERTAgent():
 
         checkpoint = 500
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
+            #total = 0.0
+            #numer = 0.0
+
+            #p_dec = self.vocab.decode(prediction)
+            #l_dec = self.vocab.decode(labels)
+            #for n,p in enumerate(p_dec):
+            #    total+=1
+            #    if (p == l_dec[n]):
+            #        numer += 1
+            #acc=numer/total
+        
             loss_avg = self.checkpoint_loss / checkpoint
             if (loss_avg == 0):
                 print("NO LOSS - something is probably wrong!")
             else:
                 print("num exs: " + str(self.total_examples) + ", log loss: " + str(math.log(loss_avg)), flush = True)
+            print("Local train accuarcy: " + str(acc))
             self.checkpoint_loss = 0
+
+        return acc
 
     # used to determine whether or not the model is doing autograd and such when running forward
     def model_set_mode(self, mode):

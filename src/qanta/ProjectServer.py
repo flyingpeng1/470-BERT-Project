@@ -55,6 +55,8 @@ def batch_guess_and_buzz(guesser, text):
 def load_model(callback, vocab_file, model_file):
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
+
+    #agent = BERTAgent(QuizBERT(25970, cache_dir=CACHE_LOCATION), vocab)
     agent = BERTAgent(None, vocab)
     agent.load_model(model_file)
     agent.model_set_mode("eval")
@@ -79,10 +81,15 @@ class Project_Guesser():
             self.load_thread.join()
 
         # Tokenize question
-        encoded_question = torch.LongTensor([encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)])
-        encoded_question.to(device)
+        encoded_question = torch.LongTensor([encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)]).to(device)
+
+        print(encoded_question)
 
         output = self.agent.model_forward(encoded_question)
+
+        print(self.agent.vocab.decode_top_n(output.cpu(), 10))
+        print(self.agent.model.get_last_pooler_output())
+
         guesses = self.agent.vocab.decode(output)[0]
         return guesses
 
@@ -92,8 +99,7 @@ class Project_Guesser():
             self.load_thread.join()
 
         # Tokenize questions
-        encoded_questions = torch.LongTensor([encode_question(t, self.tokenizer, MAX_QUESTION_LENGTH) for t in text])
-        encoded_questions.to(device)
+        encoded_questions = torch.LongTensor([encode_question(t, self.tokenizer, MAX_QUESTION_LENGTH) for t in text]).to(device)
         
         output = self.agent.model_forward(encoded_questions)
         guess = self.agent.vocab.decode(output)
@@ -198,7 +204,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     
     print("Finished loading - commence training.", flush = True)
 
-    agent.model_set_mode("train")
+    #agent.model_set_mode("train")
 
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
