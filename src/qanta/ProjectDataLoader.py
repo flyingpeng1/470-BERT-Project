@@ -341,8 +341,8 @@ class Project_BERT_Data_Manager:
                         for s in i:
                             partial_text = ' '.join(sentences[:s+1])
                             question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
-                         temp_answers.append(answer)
-                         temp_questions.append(question_encoded)
+                            temp_answers.append(answer)
+                            temp_questions.append(question_encoded)
 
                         self.num_questions += 1
                         if (self.num_questions%1000 == 0):
