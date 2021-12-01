@@ -254,8 +254,6 @@ def encode_question(question, tokenizer, maximum_question_length):
 
     if (qlen != 0):
         question_encoded = tokenizer.encode(tokenizer.tokenize(question))
-    else:
-
 
     # Forcing question to be exactly the right length for BERT to accept
     if (qlen > maximum_question_length):
