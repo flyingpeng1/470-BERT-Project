@@ -52,7 +52,7 @@ class AnswerVocab:
         encoded = []
         for a in idxs:
             v = self.list_template.copy()
-            v[a] = 100000
+            v[a] = 1
             encoded.append(v)
         return torch.LongTensor(encoded)
 
