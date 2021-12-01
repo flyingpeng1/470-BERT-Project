@@ -56,7 +56,7 @@ class QuizBERT(nn.Module):
     def forward(self, x):
         self.last_pooler_out = self.bert(x).pooler_output
         #print(next(self.bert.encoder.layer[11].parameters()))
-        return self.linear_output(self.last_pooler_out)#self.sigmoid()
+        return self.sigmoid(self.linear_output(self.last_pooler_out))
 
     # return last pooler output vector - will be used in buzztrain
     def get_last_pooler_output(self):
@@ -88,7 +88,7 @@ class BERTAgent():
 
     def __init__(self, model, vocab):
         self.vocab = vocab
-        self.loss_fn = nn.MSELoss()##nn.BCELoss()
+        self.loss_fn = nn.CrossEntropyLoss()##nn.MSELoss()##nn.BCELoss()
         self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0
         self.checkpoint_loss = 0
