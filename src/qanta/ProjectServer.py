@@ -274,7 +274,7 @@ def vocab(save_location, data_file, category_only):
 @click.option('--data_file', default=TRAIN_FILE_LOCATION)
 @click.option('--limit', default=-1)
 @click.option('--category_only', default=False, is_flag=True)
-def makemanager(vocab_location, save_location, data_file, limit):
+def makemanager(vocab_location, save_location, data_file, limit, category_only):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     loader = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)

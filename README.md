@@ -115,5 +115,4 @@ python -m qanta.ProjectServer evaluate --vocab_file ../data/QuizBERTSmall.vocab 
 
 python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTCategory.vocab --data_file ../data/qanta.dev.2018.04.18.json --category_only
 
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTCategory.vocab --train_file ../data/qanta.dev.2018.04.18.json --category_only --save_regularity 1000 --epochs 3
-
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTCategory.vocab --train_file ../data/qanta.dev.2018.04.18.json --category_only --save_regularity 1000 --epochs 2
