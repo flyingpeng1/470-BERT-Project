@@ -125,7 +125,7 @@ class BERTAgent():
         else:
             print("No metadata found / no data manager provided - starting from epoch 0")
 
-        self.optimizer = Adamax(self.model.parameters())
+        self.optimizer = torch.optim.Adamax(self.model.parameters())
         print("Loaded model from: \"" + file_name + "\"", flush = True)
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
