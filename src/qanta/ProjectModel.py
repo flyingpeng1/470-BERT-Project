@@ -12,17 +12,22 @@ import torch
 import torch.nn as nn
 import numpy as np
 import math
+import json
 
 from transformers import BertTokenizer
 from transformers import BertModel
+#from transformers import BertForSequenceClassification
 from transformers import BertConfig
-from transformers import AdamW
+#from transformers import AdamW
 
 from qanta.ProjectDataLoader import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 CACHE_LOCATION = "cache"
+BERT_OUTPUT_LENGTH = 768
+HIDDEN_UNITS = 768
+DROPOUT = .2
 
 #=======================================================================================================
 # The actual model that is managed by pytorch - still needs a name!
@@ -37,17 +42,18 @@ class QuizBERT(nn.Module):
         else:
             print("No pretraining cache provided: falling back to fresh bert model.", flush = True)
             config = BertConfig()
-
             self.bert = BertModel(config).to(device)
 
         self.answer_vector_length = answer_vector_length
-        self.linear_output = nn.Linear(768, answer_vector_length).to(device)
-        self.sigmoid = nn.Sigmoid().to(device)
+        self.linear_input = nn.Linear(BERT_OUTPUT_LENGTH, HIDDEN_UNITS).to(device)
+        self.ReLU = nn.ReLU().to(device)
+        self.drop = nn.Dropout(p=DROPOUT).to(device)
+        self.linear_output = nn.Linear(HIDDEN_UNITS, answer_vector_length).to(device)
         self.last_pooler_out = None
 
-        # freezes N layers
-        n=12
-        modules = [self.bert.embeddings, *self.bert.encoder.layer[:n]]
+        # freezes all BERT layers and embeddings
+        #n=13
+        modules = [self.bert.embeddings, *self.bert.encoder.layer]
         for module in modules:
             for param in module.parameters():
                 param.requires_grad = False
@@ -56,7 +62,8 @@ class QuizBERT(nn.Module):
     def forward(self, x):
         self.last_pooler_out = self.bert(x).pooler_output
         #print(next(self.bert.encoder.layer[11].parameters()))
-        return self.sigmoid(self.linear_output(self.last_pooler_out))
+        #print(next(self.linear_output.parameters()))
+        return self.linear_output(self.drop(self.ReLU(self.linear_input(self.last_pooler_out))))
 
     # return last pooler output vector - will be used in buzztrain
     def get_last_pooler_output(self):
@@ -71,14 +78,6 @@ class QuizBERT(nn.Module):
         self.bert = self.bert.to(device)
         self.linear_output = self.linear_output.to(device)
         self = self.to(device)
-
-    def evaluate(self, data):
-        with torch.no_grad():
-            pass
-                        
-
-
-
 
 #=======================================================================================================
 # This will handle the training and evaluating of the model.
@@ -102,7 +101,7 @@ class BERTAgent():
         if (not model == None):
             self.model = model
             self.model.to_device(device)
-            self.optimizer = AdamW(model.parameters(), lr=0.0005)
+            self.optimizer = torch.optim.Adamax(model.parameters())#, lr=0.01
         else:
             print("Agent is waiting for model load!", flush = True)
 
@@ -140,7 +139,7 @@ class BERTAgent():
         print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
             steps+=1
-            inputs, labels = data_manager.get_next_batch()
+            inputs, labels = data_manager.get_next_batch(encode_index=False)
             step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
@@ -167,13 +166,13 @@ class BERTAgent():
         self.optimizer.zero_grad()
 
         prediction = self.model(inputs)
-        
-        loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(torch.float32).to(device))
+
+        loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(device).squeeze())
         loss.backward()
         self.optimizer.step()
         self.total_examples += 1
 
-        acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), torch.argmax(labels, dim=1))))/batch_size
+        acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), labels)))/batch_size
 
         loss_val = loss.data.cpu().numpy()
 
@@ -217,6 +216,61 @@ class BERTAgent():
     def model_forward(self, input_tensor):
         with torch.no_grad():
             return self.model(input_tensor)
+
+    def model_evaluate(self, data_manager, save_loc=None, k=10):
+        epoch = data_manager.full_epochs
+        using_gpu = not device == "cpu"
+        acc=0.0
+        num_batches = 0.0
+        guess_metadata = []
+
+        # must go one at a time when recording pooler output
+        if (not save_loc==None):
+            data_manager.batch_size = 1
+
+        with torch.no_grad():
+            while epoch == data_manager.full_epochs:
+                inputs, labels = data_manager.get_next_batch()
+                gpu_inputs = inputs.to(device)
+                gpu_labels = labels.to(device)
+                guesses = self.model(gpu_inputs)
+                num_batches+=1
+
+                if (int(data_manager.batch % 100) == 0):
+                    print("Progress: " + str(data_manager.get_epoch_completion()) + "%")
+
+                if (save_loc==None): 
+                    # ultra-fast way of calculating batch accuracy on GPU
+                    acc += (data_manager.batch_size - torch.count_nonzero(torch.subtract(torch.argmax(gpu_labels, dim=1), torch.argmax(guesses, dim=1))))/data_manager.batch_size
+                else:
+                    if (len(guesses) < 1):
+                        break
+                    guess = guesses[0]
+                    top_k_scores = torch.topk(guess, k)
+                    correct = (0 == torch.count_nonzero(torch.subtract(torch.argmax(gpu_labels, dim=1), torch.argmax(guesses, dim=1))))
+                    meta = {
+                        "top_k_scores" : top_k_scores.values.tolist(),
+                        "question_nonzero_tokens": torch.count_nonzero(gpu_inputs).cpu().tolist(), 
+                        "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        "label" : correct.cpu().tolist()
+                    }
+                    guess_metadata.append(meta)
+                
+                # clear old tensors from VRAM
+                if (using_gpu):
+                    gpu_labels = None
+                    gpu_inputs = None
+                    torch.cuda.empty_cache() 
+
+            if (save_loc==None):
+                print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
+            else:
+                textfile = open(save_loc, "w")
+                json_dict = {
+                        "buzzer_data":guess_metadata
+                        }
+                json.dump(json_dict, textfile)
+                textfile.close()
 
 
 if __name__ == '__main__':

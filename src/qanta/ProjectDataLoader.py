@@ -205,7 +205,7 @@ def analyze_dataset(filename):
 #=======================================================================================================
 # Generates a vocab file using the answer data contained within file_name and saves it to save_location
 #=======================================================================================================
-def answer_vocab_generator(file_name, save_location):
+def answer_vocab_generator(file_name, save_location, category_only=False):
     print("Preparing to generate answer vocabulary file", flush = True)
     
     with open(file_name) as json_data:
@@ -217,7 +217,12 @@ def answer_vocab_generator(file_name, save_location):
         print("working...", flush = True)
 
         for q in qs:
-            page = q['page']
+            page = None
+            if (category_only):
+                page = q['category']
+            else:
+                page = q['page']
+  
             if (not page in page_set):
                 page_set[page] = 1
 
@@ -249,11 +254,12 @@ def load_data_manager(file_name):
 # Helper that takes a question and the tokenizer, and encodes the question properly.
 #=======================================================================================================
 def encode_question(question, tokenizer, maximum_question_length):
-    qlen = len(question_encoded)
     question_encoded = []
 
-    if (qlen != 0):
+    if (len(question) != 0):
         question_encoded = tokenizer.encode(tokenizer.tokenize(question))
+
+    qlen = len(question_encoded)
 
     # Forcing question to be exactly the right length for BERT to accept
     if (qlen > maximum_question_length):
@@ -315,7 +321,7 @@ class Project_BERT_Data_Manager:
         self.full_epochs = 0
         self.batch_size = batch_size
 
-    def load_data(self, file_name, limit, split_sentences=False):
+    def load_data(self, file_name, limit, split_sentences=False, category_only=False):
         with open(file_name) as json_data:
             temp_questions = []
             temp_answers = None
@@ -362,20 +368,29 @@ class Project_BERT_Data_Manager:
 
             print("Loaded " + str() + "", flush = True)
 
-    def get_next(self):
+    def get_next(self, encode_index=True):
         self.epoch()
-        element = (self.questions[self.current:self.current+1], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:self.current+1]))
+        encode = lambda x : torch.LongTensor(x)
+        if (encode_index):
+            encode = lambda x : self.answer_vocab.encode_from_indexes(x)
+
+        element = (self.questions[self.current:self.current+1], encode(self.answer_indexes[self.current:self.current+1]))
         self.current += 1
         return element
 
-    def get_next_batch(self):
+    def get_next_batch(self, encode_index=True):
+        encode = lambda x : torch.LongTensor(x)
+        if (encode_index):
+            encode = lambda x : self.answer_vocab.encode_from_indexes(x)
+
+
         if (self.current + self.batch_size > self.num_questions):
-            batch = (self.questions[self.current:], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:]))
+            batch = (self.questions[self.current:], encode(self.answer_indexes[self.current:]))
             self.current = self.num_questions
             self.epoch()
             return batch
         else:
-            batch = (self.questions[self.current:self.current+self.batch_size], self.answer_vocab.encode_from_indexes(self.answer_indexes[self.current:self.current+self.batch_size]))
+            batch = (self.questions[self.current:self.current+self.batch_size], encode(self.answer_indexes[self.current:self.current+self.batch_size]))
             self.current += self.batch_size
             self.batch += 1
             return batch

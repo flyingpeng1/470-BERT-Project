@@ -25,7 +25,9 @@ VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
 DATA_MANAGER_LOCATION = "/src/data/QBERT_Data.manager"
 MODEL_LOCATION = "/src/data/QuizBERT.model"
 TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
-TRAINING_PROGRESS_LOCATION = "/src/train_progress"
+TEST_FILE_LOCATION = "/src/data/qanta.test.2018.04.18.json"
+TRAINING_PROGRESS_LOCATION = "training_progress"
+BUZZTRAIN_LOCATION = "/src/data/buzztrain.json"
 
 LOCAL_CACHE_LOCATION = "cache"
 LOCAL_VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
@@ -33,7 +35,7 @@ LOCAL_MODEL_LOCATION = "/src/data/QuizBERT.model"
 LOCAL_TRAINING_PROGRESS_LOCATION = "train_progress"
 
 MAX_QUESTION_LENGTH = 412
-BATCH_SIZE = 6
+BATCH_SIZE = 15
 
 #=======================================================================================================
 # Combines guesser and buzzer outputs
@@ -182,7 +184,8 @@ def web(host, port, vocab_file, model_file):
 @click.option('--preloaded_manager', default=False, is_flag=True)
 @click.option('--manager_file', default=DATA_MANAGER_LOCATION)
 @click.option('--save_regularity', default=20)
-def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity):
+@click.option('--category_only', default=False, is_flag=True)
+def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
@@ -194,7 +197,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         data.batch_size = BATCH_SIZE # set the correct batch size
     else:
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-        data.load_data(train_file, data_limit)
+        data.load_data(train_file, data_limit, category_only=category_only)
 
     if (resume):
         agent = BERTAgent(None, vocab)
@@ -209,17 +212,60 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
         current_epoch = data.full_epochs
-        agent.train_epoch(data, save_regularity, "training_progress")
+        agent.train_epoch(data, save_regularity, TRAINING_PROGRESS_LOCATION)
+
+    agent.save_model({"epoch":data.full_epochs, "completed":True}, TRAINING_PROGRESS_LOCATION + "/QuizBERT.model")
 
     print("Training completed - " + str(epochs) + " full epochs", flush = True)
+
+
+# High-efficiency evaluation - has an option to generate buzztrain file
+@cli.command()
+#@click.option('--disable-batch', default=False, is_flag=True)
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--model_file', default=MODEL_LOCATION)
+@click.option('--dobuzztrain', default=False, is_flag=True)
+@click.option('--buzztrainfile', default=BUZZTRAIN_LOCATION)
+@click.option('--preloaded_manager', default=False, is_flag=True)
+@click.option('--manager_file', default=DATA_MANAGER_LOCATION)
+@click.option('--data_file', default=TEST_FILE_LOCATION)
+@click.option('--top_k', default=10)
+@click.option('--category_only', default=False, is_flag=True)
+def evaluate(vocab_file, model_file, dobuzztrain, buzztrainfile, preloaded_manager, manager_file, data_file, top_k, category_only): 
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    vocab = load_vocab(vocab_file)
+    data = None
+    agent = None
+
+    save_loc = None
+    if (dobuzztrain):
+        save_loc = buzztrainfile
+
+    agent = BERTAgent(None, vocab)
+    agent.load_model(model_file, data)
+
+
+    if (preloaded_manager):
+        data = load_data_manager(manager_file)
+        data.batch_size = BATCH_SIZE # set the correct batch size
+    else:
+        data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
+        data.load_data(data_file, -1, split_sentences=True, category_only=category_only)
+
+    print("Finished loading - commence evaluation.", flush = True)
+
+    agent.model_evaluate(data, save_loc, top_k)
+
+    print("Finished evaluation")
 
 
 # Run to generate vocab file in specified location using specified data file.
 @cli.command()
 @click.option('--save_location', default=VOCAB_LOCATION)
 @click.option('--data_file', default=TRAIN_FILE_LOCATION)
-def vocab(save_location, data_file):
-    answer_vocab_generator(data_file, save_location)
+@click.option('--category_only', default=False, is_flag=True)
+def vocab(save_location, data_file, category_only):
+    answer_vocab_generator(data_file, save_location, category_only=category_only)
 
 # Run to generate data manager file in specified location using specified data file.
 @cli.command()
@@ -227,11 +273,12 @@ def vocab(save_location, data_file):
 @click.option('--save_location', default=DATA_MANAGER_LOCATION)
 @click.option('--data_file', default=TRAIN_FILE_LOCATION)
 @click.option('--limit', default=-1)
+@click.option('--category_only', default=False, is_flag=True)
 def makemanager(vocab_location, save_location, data_file, limit):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     loader = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    loader.load_data(data_file, limit)
+    loader.load_data(data_file, limit, category_only=category_only)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
 # Run to check if cuda is available.

@@ -105,5 +105,15 @@ run the model to answer questions and buzz
 some commands I like to use - Jack
 
 python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 40
+
 python -m qanta.ProjectServer web --vocab_file ../data/QuizBERTSmall.vocab --model_file ../data/QuizBERT.model
+
 python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json
+
+python -m qanta.ProjectServer evaluate --vocab_file ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json --model_file ../data/QuizBERT.model
+
+
+python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTCategory.vocab --data_file ../data/qanta.dev.2018.04.18.json --category_only
+
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTCategory.vocab --train_file ../data/qanta.dev.2018.04.18.json --category_only --save_regularity 1000 --epochs 3
+
