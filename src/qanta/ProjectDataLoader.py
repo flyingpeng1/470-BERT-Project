@@ -336,7 +336,11 @@ class Project_BERT_Data_Manager:
                     break
 
                 text = q["text"]
-                answer = q["page"]
+                answer = None
+                if (category_only):
+                    answer = q["category"]
+                else:
+                    answer = q["page"]
 
                 if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
 
