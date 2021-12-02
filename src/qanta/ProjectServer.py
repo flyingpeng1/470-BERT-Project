@@ -224,6 +224,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 #@click.option('--disable-batch', default=False, is_flag=True)
 @click.option('--vocab_file', default=VOCAB_LOCATION)
 @click.option('--model_file', default=MODEL_LOCATION)
+@click.option('--split_sentences', default=False, is_flag=True)
 @click.option('--dobuzztrain', default=False, is_flag=True)
 @click.option('--buzztrainfile', default=BUZZTRAIN_LOCATION)
 @click.option('--preloaded_manager', default=False, is_flag=True)
@@ -231,7 +232,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 @click.option('--data_file', default=TEST_FILE_LOCATION)
 @click.option('--top_k', default=10)
 @click.option('--category_only', default=False, is_flag=True)
-def evaluate(vocab_file, model_file, dobuzztrain, buzztrainfile, preloaded_manager, manager_file, data_file, top_k, category_only): 
+def evaluate(vocab_file, model_file, split_sentences, dobuzztrain, buzztrainfile, preloaded_manager, manager_file, data_file, top_k, category_only): 
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
     data = None
@@ -250,7 +251,7 @@ def evaluate(vocab_file, model_file, dobuzztrain, buzztrainfile, preloaded_manag
         data.batch_size = BATCH_SIZE # set the correct batch size
     else:
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-        data.load_data(data_file, -1, split_sentences=True, category_only=category_only)
+        data.load_data(data_file, -1, split_sentences=split_sentences, category_only=category_only)
 
     print("Finished loading - commence evaluation.", flush = True)
 
