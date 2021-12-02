@@ -265,6 +265,7 @@ class BERTAgent():
             if (save_loc==None):
                 print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
             else:
+                print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
                 textfile = open(save_loc, "w")
                 json_dict = {
                         "buzzer_data":guess_metadata
