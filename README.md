@@ -123,5 +123,6 @@ python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTCategory.vocab 
 sudo docker-compose run -d --name trainer bert_qb ./cli train --epochs 30 --save_regularity 100 --category_only --vocab_file /src/data/QuizBERTCategory.vocab --preloaded_manager
 
 
-sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json
+sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
 
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 2

@@ -20,7 +20,11 @@ from transformers import BertModel
 from transformers import BertConfig
 #from transformers import AdamW
 
+#from warp_loss import warp_loss
+import random
+
 from qanta.ProjectDataLoader import *
+from qanta.warp_loss import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -28,6 +32,9 @@ CACHE_LOCATION = "cache"
 BERT_OUTPUT_LENGTH = 768
 HIDDEN_UNITS = 768
 DROPOUT = .2
+EMB_DIM=400
+
+
 
 #=======================================================================================================
 # The actual model that is managed by pytorch - still needs a name!
@@ -37,19 +44,18 @@ class QuizBERT(nn.Module):
     # Initialize the parameters you'll need for the model.
     def __init__(self, answer_vector_length, cache_dir=""):    
         super(QuizBERT, self).__init__()
+
+        self.answer_vector_length = answer_vector_length
+
+        self.answers_embeds = nn.Embedding(answer_vector_length, EMB_DIM).to(device)
+        self.question_embeds = nn.Linear(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)#nn.Embedding(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)
+
         if (not cache_dir==""):
             self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache_dir).to(device) #BERT-large uses too much VRAM
         else:
             print("No pretraining cache provided: falling back to fresh bert model.", flush = True)
             config = BertConfig()
             self.bert = BertModel(config).to(device)
-
-        self.answer_vector_length = answer_vector_length
-        self.linear_input = nn.Linear(BERT_OUTPUT_LENGTH, HIDDEN_UNITS).to(device)
-        self.ReLU = nn.ReLU().to(device)
-        self.drop = nn.Dropout(p=DROPOUT).to(device)
-        self.linear_output = nn.Linear(HIDDEN_UNITS, answer_vector_length).to(device)
-        self.last_pooler_out = None
 
         # freezes all BERT layers and embeddings
         #n=13
@@ -59,24 +65,38 @@ class QuizBERT(nn.Module):
                 param.requires_grad = False
 
     # computes output vector using pooled BERT output
-    def forward(self, x):
-        self.last_pooler_out = self.bert(x).pooler_output
-        #print(next(self.bert.encoder.layer[11].parameters()))
-        #print(next(self.linear_output.parameters()))
-        return self.linear_output(self.drop(self.ReLU(self.linear_input(self.last_pooler_out))))
+    def forward(self, question, pos, neg):
+        self.last_pooler_out = self.bert(question).pooler_output
+        
+        batch_size = neg.size(0)
+        question_vector = self.question_embeds(self.last_pooler_out.to(device))
+        repeated_question_vector = question_vector.repeat((batch_size, 1)).view(batch_size, -1, 1)
+
+        pos_res = torch.bmm(self.answers_embeds(torch.unsqueeze(pos, 0)), repeated_question_vector).squeeze(2)
+        neg_res = torch.bmm(self.answers_embeds(neg), repeated_question_vector).squeeze(2)
+
+        return pos_res, neg_res
+
+    def embed_answer(self, answer):
+        return self.answers_embeds(answer)
+
+    def embed_question(self, question):
+        return self.question_embeds(self.bert(question))
+
 
     # return last pooler output vector - will be used in buzztrain
-    def get_last_pooler_output(self):
-        if (self.last_pooler_out == None):
-            raise ValueError("No pooler output cached - run through a guess first!")
-        return self.last_pooler_out
+    #def get_last_pooler_output(self):
+    #    if (self.last_pooler_out == None):
+    #        raise ValueError("No pooler output cached - run through a guess first!")
+    #    return self.last_pooler_out
 
     def load_bert_pretained_weights(self, cache):
         self.bert = self.bert
 
     def to_device(self, device):
         self.bert = self.bert.to(device)
-        self.linear_output = self.linear_output.to(device)
+        self.answers_embeds = self.answers_embeds.to(device)
+        self.question_embeds = self.question_embeds.to(device)
         self = self.to(device)
 
 #=======================================================================================================
@@ -87,8 +107,8 @@ class BERTAgent():
 
     def __init__(self, model, vocab):
         self.vocab = vocab
-        self.loss_fn = nn.CrossEntropyLoss()##nn.MSELoss()##nn.BCELoss()
-        self.loss_fn = self.loss_fn.to(device)
+        #self.loss_fn = nn.CrossEntropyLoss()##nn.MSELoss()##nn.BCELoss()
+        #self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0
         self.checkpoint_loss = 0
         self.epoch_loss = 0
@@ -104,6 +124,18 @@ class BERTAgent():
             self.optimizer = torch.optim.Adamax(model.parameters())#, lr=0.01
         else:
             print("Agent is waiting for model load!", flush = True)
+
+
+    # Helper for randomly sampling negative labels
+    def get_random_negatives(self, pos, num):
+
+        neg = [random.randrange(0, self.vocab.num_answers) for x in range(0, num)]
+        
+        # make sure positive label isn't in the distribution - this should be really rare anyway
+        while (pos in neg):
+            neg = [random.randrange(0, self.vocab.num_answers) for x in range(0, num)]
+
+        return torch.LongTensor([neg]).to(device)
 
     # Save model and its associated metadata 
     def save_model(self, metadata, save_location):
@@ -162,28 +194,42 @@ class BERTAgent():
             self.save_model({"epoch":epoch, "completed":True}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
 
     # Runs training step on one batch of tensors
-    def train_step(self, epoch, inputs, labels, batch_size):
+    def train_step(self, epoch, input_question, answer_label, batch_size):
+        if (len(answer_label) == 0):
+            return 0
+
+        neg_labels = self.get_random_negatives(answer_label, 10)
+
+        #print(answer_label.to(device))
+        #print(neg_labels)
+
         self.optimizer.zero_grad()
-
-        prediction = self.model(inputs)
-
-        loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(device).squeeze())
+        pos_res, neg_res = self.model(input_question, answer_label.to(device), neg_labels)
+        #print('Positive Labels:', answer_label)
+        #print('Negative Labels:', neg_labels)
+        #print('Model positive scores:', pos_res)
+        #print('Model negative scores:', neg_res)
+        loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device)
+        #print('Loss:', loss)
         loss.backward()
+
+        #loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(device).squeeze())
+        #loss.backward()
         self.optimizer.step()
         self.total_examples += 1
 
-        acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), labels)))/batch_size
+        #acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), labels)))/batch_size
 
-        loss_val = loss.data.cpu().numpy()
+        #loss_val = loss.data.cpu().numpy()
 
-        if (not np.isnan(loss_val)):
-            self.checkpoint_loss += loss_val
-            self.epoch_loss += loss_val
+        #if (not np.isnan(loss_val)):
+        #    self.checkpoint_loss += loss_val
+        #    self.epoch_loss += loss_val
 
-        checkpoint = 3000
+        checkpoint = 500
         if self.total_examples % checkpoint == 0 and self.total_examples > 0:
-            #total = 0.0
-            #numer = 0.0
+            total = 0.0
+            numer = 0.0
 
             #p_dec = self.vocab.decode(prediction)
             #l_dec = self.vocab.decode(labels)
@@ -193,15 +239,16 @@ class BERTAgent():
             #        numer += 1
             #acc=numer/total
         
-            loss_avg = self.checkpoint_loss / checkpoint
-            if (loss_avg == 0):
-                print("NO LOSS - something is probably wrong!")
-            else:
-                print("num exs: " + str(self.total_examples) + ", log loss: " + str(math.log(loss_avg)), flush = True)
-            print("Local train accuarcy: " + str(acc))
-            self.checkpoint_loss = 0
+            #loss_avg = self.checkpoint_loss / checkpoint
+            #if (loss_avg == 0):
+            #    print("NO LOSS - something is probably wrong!")
+            #else:
+            #    print("num exs: " + str(self.total_examples) + ", log loss: " + str(math.log(loss_avg)), flush = True)
+            #print("Local train accuarcy: " + str(acc))
+            #self.checkpoint_loss = 0
+            print(loss)
 
-        return acc
+        return 0#acc
 
     # used to determine whether or not the model is doing autograd and such when running forward
     def model_set_mode(self, mode):
