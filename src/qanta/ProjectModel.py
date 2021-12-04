@@ -32,12 +32,11 @@ CACHE_LOCATION = "cache"
 BERT_OUTPUT_LENGTH = 768
 HIDDEN_UNITS = 768
 DROPOUT = .2
-EMB_DIM=400
-
+EMB_DIM=1000
 
 
 #=======================================================================================================
-# The actual model that is managed by pytorch - still needs a name!
+# The actual model that is managed by pytorch - QuizBERT, excelsior!!!
 #=======================================================================================================
 class QuizBERT(nn.Module):
 
@@ -48,6 +47,8 @@ class QuizBERT(nn.Module):
         self.answer_vector_length = answer_vector_length
 
         self.answers_embeds = nn.Embedding(answer_vector_length, EMB_DIM).to(device)
+
+
         self.question_embeds = nn.Linear(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)#nn.Embedding(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)
 
         if (not cache_dir==""):
@@ -65,8 +66,12 @@ class QuizBERT(nn.Module):
                 param.requires_grad = False
 
     # computes output vector using pooled BERT output
-    def forward(self, question, pos, neg):
-        self.last_pooler_out = self.bert(question).pooler_output
+    def forward(self, question, pos, neg, expect_precalculated_pool=False):
+        # allows to precalculate the BERT output for faster training
+        if (expect_precalculated_pool):
+            self.last_pooler_out = question
+        else:
+            self.last_pooler_out = self.bert(question).pooler_output
         
         batch_size = neg.size(0)
         question_vector = self.question_embeds(self.last_pooler_out.to(device))
@@ -80,15 +85,18 @@ class QuizBERT(nn.Module):
     def embed_answer(self, answer):
         return self.answers_embeds(answer)
 
-    def embed_question(self, question):
-        return self.question_embeds(self.bert(question))
+    def embed_question(self, question, expect_precalculated_pool=False):
+        if (expect_precalculated_pool):
+            return self.question_embeds(question)
+        else:
+            return self.question_embeds(self.bert(question).pooler_output)
 
 
     # return last pooler output vector - will be used in buzztrain
-    #def get_last_pooler_output(self):
-    #    if (self.last_pooler_out == None):
-    #        raise ValueError("No pooler output cached - run through a guess first!")
-    #    return self.last_pooler_out
+    def get_last_pooler_output(self):
+        if (self.last_pooler_out == None):
+            raise ValueError("No pooler output cached - run through a guess first!")
+        return self.last_pooler_out
 
     def load_bert_pretained_weights(self, cache):
         self.bert = self.bert
@@ -107,15 +115,15 @@ class BERTAgent():
 
     def __init__(self, model, vocab):
         self.vocab = vocab
-        #self.loss_fn = nn.CrossEntropyLoss()##nn.MSELoss()##nn.BCELoss()
-        #self.loss_fn = self.loss_fn.to(device)
         self.total_examples = 0
         self.checkpoint_loss = 0
         self.epoch_loss = 0
         self.saved_recently = False
-        # TODO - save this data correctly!!!
         self.model = None
         self.optimizer = None
+
+        self.answer_vector_cache = None
+        self.cos_sim = nn.CosineSimilarity(dim=-1)
 
         # waiting to create the optimizer until a model is loaded
         if (not model == None):
@@ -126,7 +134,7 @@ class BERTAgent():
             print("Agent is waiting for model load!", flush = True)
 
 
-    # Helper for randomly sampling negative labels
+    # Helper for randomly sampling negative labels - important to use in WARP loss function
     def get_random_negatives(self, pos, num):
 
         neg = [random.randrange(0, self.vocab.num_answers) for x in range(0, num)]
@@ -145,7 +153,6 @@ class BERTAgent():
     # Load the model and its associated metadata
     def load_model(self, file_name, data_manager=None):
         load = pickle.load(open(file_name,'rb'))
-        print(load)
         self.model = load["model"]
         self.model.to_device(device)
         if ("metadata" in load and "epoch" in load["metadata"] and not data_manager == None):
@@ -167,15 +174,16 @@ class BERTAgent():
         self.epoch_loss = 0
         steps = 0.0
         step_avg = 0.0
+        use_question_cache = data_manager.use_bert_question_cache
 
         print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
             steps+=1
             inputs, labels = data_manager.get_next_batch(encode_index=False)
-            step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size)
+            step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
-            if (int(data_manager.batch % 100) == 0):
+            if (int(data_manager.batch % 10000) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
 
             # saves mid-epoch at supplied interval
@@ -186,69 +194,35 @@ class BERTAgent():
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
 
-        print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
-        print("train accuracy: " + str((step_avg/steps)*100) + "%")
+        #print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
+        #print("train accuracy: " + str((step_avg/steps)*100) + "%")
 
         # saves every epoch if allowed
         if (not save_freq > 100):
             self.save_model({"epoch":epoch, "completed":True}, save_loc + "/Model_epoch_" + str(epoch) + ".model")
 
     # Runs training step on one batch of tensors
-    def train_step(self, epoch, input_question, answer_label, batch_size):
+    def train_step(self, epoch, input_question, answer_label, batch_size, use_question_cache=False):
+        self.answer_vector_cache == None
+
         if (len(answer_label) == 0):
             return 0
 
         neg_labels = self.get_random_negatives(answer_label, 10)
 
-        #print(answer_label.to(device))
-        #print(neg_labels)
-
         self.optimizer.zero_grad()
-        pos_res, neg_res = self.model(input_question, answer_label.to(device), neg_labels)
+        pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
         #print('Positive Labels:', answer_label)
         #print('Negative Labels:', neg_labels)
         #print('Model positive scores:', pos_res)
         #print('Model negative scores:', neg_res)
         loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device)
-        #print('Loss:', loss)
         loss.backward()
 
-        #loss = self.loss_fn(prediction.to(torch.float32).to(device), labels.to(device).squeeze())
-        #loss.backward()
         self.optimizer.step()
         self.total_examples += 1
 
-        #acc = (batch_size - torch.count_nonzero(torch.subtract(torch.argmax(prediction, dim=1), labels)))/batch_size
-
-        #loss_val = loss.data.cpu().numpy()
-
-        #if (not np.isnan(loss_val)):
-        #    self.checkpoint_loss += loss_val
-        #    self.epoch_loss += loss_val
-
-        checkpoint = 500
-        if self.total_examples % checkpoint == 0 and self.total_examples > 0:
-            total = 0.0
-            numer = 0.0
-
-            #p_dec = self.vocab.decode(prediction)
-            #l_dec = self.vocab.decode(labels)
-            #for n,p in enumerate(p_dec):
-            #    total+=1
-            #    if (p == l_dec[n]):
-            #        numer += 1
-            #acc=numer/total
-        
-            #loss_avg = self.checkpoint_loss / checkpoint
-            #if (loss_avg == 0):
-            #    print("NO LOSS - something is probably wrong!")
-            #else:
-            #    print("num exs: " + str(self.total_examples) + ", log loss: " + str(math.log(loss_avg)), flush = True)
-            #print("Local train accuarcy: " + str(acc))
-            #self.checkpoint_loss = 0
-            print(loss)
-
-        return 0#acc
+        return 0
 
     # used to determine whether or not the model is doing autograd and such when running forward
     def model_set_mode(self, mode):
@@ -259,14 +233,41 @@ class BERTAgent():
         else:
             raise ValueError("No model mode \"" + mode + "\" exists", flush = True)
 
-    # Computes forward on the model - I used this for debugging
-    def model_forward(self, input_tensor):
+    def cache_answer_vectors(self):
+        self.answer_vector_cache = None
+        torch.cuda.empty_cache()
         with torch.no_grad():
-            return self.model(input_tensor)
+            self.answer_vector_cache = self.model.embed_answer(torch.LongTensor(range(0, self.vocab.num_answers)).to(device))
+
+    def answer_knn(self, questions, n, question_pooled=False, id_only=False):
+        answers = []
+
+        if (self.answer_vector_cache == None):
+            print("Must cache answer vectors before calculating KNN", flush=True)
+            print("Caching answer vectors...", flush=True)
+            self.cache_answer_vectors()
+
+        with torch.no_grad():
+            qs = self.model.embed_question(questions, expect_precalculated_pool=question_pooled)
+
+            for encoded_q in qs:
+                sim = self.cos_sim(encoded_q, self.answer_vector_cache)
+                values,indices = sim.topk(n, largest=True)
+                if (id_only):
+                    answers.append(indices)
+                else:
+                    answers.append(self.vocab.decode(indices, values))
+
+        if (id_only):
+            return torch.LongTensor(answers)
+        else:
+            return answers
+
 
     def model_evaluate(self, data_manager, save_loc=None, k=10):
         epoch = data_manager.full_epochs
-        using_gpu = not device == "cpu"
+        pooled_questions = data_manager.use_bert_question_cache
+        using_gpu = (not device == "cpu")
         acc=0.0
         num_batches = 0.0
         guess_metadata = []
@@ -277,29 +278,35 @@ class BERTAgent():
 
         with torch.no_grad():
             while epoch == data_manager.full_epochs:
-                inputs, labels = data_manager.get_next_batch()
+                inputs, labels = data_manager.get_next_batch(encode_index=False)
                 gpu_inputs = inputs.to(device)
                 gpu_labels = labels.to(device)
-                guesses = self.model(gpu_inputs)
+                
+                if (len(gpu_labels) == 0):
+                    break
+
                 num_batches+=1
 
-                if (int(data_manager.batch % 100) == 0):
+                if (int(data_manager.batch % 5000) == 0):
                     print("Progress: " + str(data_manager.get_epoch_completion()) + "%")
 
                 if (save_loc==None): 
-                    # ultra-fast way of calculating batch accuracy on GPU
-                    acc += (data_manager.batch_size - torch.count_nonzero(torch.subtract(torch.argmax(gpu_labels, dim=1), torch.argmax(guesses, dim=1))))/data_manager.batch_size
+                    guesses = self.answer_knn(gpu_inputs, 1, question_pooled=pooled_questions, id_only=True).to(device)
+                    acc += (data_manager.batch_size - torch.count_nonzero(torch.sub(gpu_labels, guesses)))/data_manager.batch_size
                 else:
-                    if (len(guesses) < 1):
-                        break
+                    guesses = self.answer_knn(gpu_inputs, k, question_pooled=pooled_questions, id_only=False)
                     guess = guesses[0]
-                    top_k_scores = torch.topk(guess, k)
-                    correct = (0 == torch.count_nonzero(torch.subtract(torch.argmax(gpu_labels, dim=1), torch.argmax(guesses, dim=1))))
+                    correct = (labels[0] == guess)
+
                     meta = {
-                        "top_k_scores" : top_k_scores.values.tolist(),
-                        "question_nonzero_tokens": torch.count_nonzero(gpu_inputs).cpu().tolist(), 
+                        "guess" : guess[0][0],
+                        "score" : guess[0][1].cpu().tolist(),
+                        "guessId" : guess[0][2].cpu().tolist(),
+                        "kguess_ids" : [val[2].cpu().tolist() for val in guess],
+                        "kguess_scores" : [val[1].cpu().tolist() for val in guess],
+                        "question_nonzero_tokens": torch.count_nonzero(data_manager.get_current_info()).tolist(), 
                         "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
-                        "label" : correct.cpu().tolist()
+                        "label" : correct
                     }
                     guess_metadata.append(meta)
                 

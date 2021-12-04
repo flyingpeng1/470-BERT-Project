@@ -37,6 +37,15 @@ LOCAL_TRAINING_PROGRESS_LOCATION = "train_progress"
 MAX_QUESTION_LENGTH = 412
 BATCH_SIZE = 1
 
+def get_eval_only_bert_model(cache_location):
+    bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=CACHE_LOCATION)
+    modules = [bert.embeddings, bert.encoder.layer]
+    for module in modules:
+        for param in module.parameters():
+            param.requires_grad = False
+
+    return bert
+
 #=======================================================================================================
 # Combines guesser and buzzer outputs
 #=======================================================================================================
@@ -183,7 +192,7 @@ def web(host, port, vocab_file, model_file):
 @click.option('--resume_file', default="")
 @click.option('--preloaded_manager', default=False, is_flag=True)
 @click.option('--manager_file', default=DATA_MANAGER_LOCATION)
-@click.option('--save_regularity', default=20)
+@click.option('--save_regularity', default=1000000)
 @click.option('--category_only', default=False, is_flag=True)
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only):
     print("Loading resources...", flush = True)
@@ -196,8 +205,9 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         data = load_data_manager(manager_file)
         data.batch_size = BATCH_SIZE # set the correct batch size
     else:
+        model = get_eval_only_bert_model(CACHE_LOCATION)
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-        data.load_data(train_file, data_limit, category_only=category_only)
+        data.load_data(train_file, data_limit, category_only=category_only, bert_model=model)
 
     if (resume):
         agent = BERTAgent(None, vocab)
@@ -209,9 +219,24 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 
     #agent.model_set_mode("train")
 
+    saved_recently = False
     current_epoch = data.full_epochs
     while (current_epoch < epochs):
         current_epoch = data.full_epochs
+        wants_to_save=(not current_epoch==0 and save_regularity>100 and save_regularity<1000000 and (current_epoch*100) % save_regularity == 0)
+        if (wants_to_save and not saved_recently):
+            saved_recently = True
+            agent.save_model({"epoch":data.full_epochs, "completed":True}, TRAINING_PROGRESS_LOCATION + "/QuizBERT_epoch_" + str(current_epoch) + ".model")
+        elif(not wants_to_save):
+            saved_recently = False 
+
+        # Evaluating the model accuarcy every 5 epochs
+        if (current_epoch%5==0):
+            data.reset_epoch()
+            agent.model_evaluate(data)
+            data.reset_epoch()
+            data.full_epochs = data.full_epochs-1 # Remove the epoch used for evaluation
+
         agent.train_epoch(data, save_regularity, TRAINING_PROGRESS_LOCATION)
 
     agent.save_model({"epoch":data.full_epochs, "completed":True}, TRAINING_PROGRESS_LOCATION + "/QuizBERT.model")
@@ -278,8 +303,9 @@ def vocab(save_location, data_file, category_only):
 def makemanager(vocab_location, save_location, data_file, limit, category_only):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    model = get_eval_only_bert_model(CACHE_LOCATION)
     loader = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    loader.load_data(data_file, limit, category_only=category_only)
+    loader.load_data(data_file, limit, category_only=category_only, bert_model=model)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
 # Run to check if cuda is available.

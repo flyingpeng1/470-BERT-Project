@@ -78,17 +78,21 @@ class AnswerVocab:
         return torch.LongTensor(encoded_answers)
 
     # returns the answers closest to the vectors
-    def decode(self, ids):
-        answers = []
-        for a in ids:
-            # Checking to make sure that the vector is the correct size, otherwise this doesn't make any sense
-            if (len(a) != self.num_answers):
-                raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers))
-            max_value = max(a)
-            answers.append(self.answers[a.tolist().index(max_value)])
-        return answers
+    def decode(self, ids, values):
+        answ = [(self.answers[idx], values[loc], idx) for loc, idx in enumerate(ids)]
+        answ.sort(reverse=True, key=lambda x: x[1])
+        return answ
 
-    # returns the answers closest to the vectors
+        #answers = []
+        #for a in ids:
+            # Checking to make sure that the vector is the correct size, otherwise this doesn't make any sense
+            #if (len(a) != self.num_answers):
+            #    raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers))
+            #max_value = max(a)
+            #answers.append(self.answers[a.tolist().index(max_value)])
+        #return answers
+
+    # This has been made obselete in the WARP version of QuizBert
     def decode_top_n(self, ids, n):
         answers = []
         for a in ids:
@@ -315,13 +319,17 @@ class Project_BERT_Data_Manager:
         self.answer_vocab = answer_vocab
         self.num_questions = 0
         self.questions = []
+        self.cached_bert_questions = []
         self.answer_indexes = []
         self.current = 0
         self.batch = 0
         self.full_epochs = 0
+        self.use_bert_question_cache = False
         self.batch_size = batch_size
 
-    def load_data(self, file_name, limit, split_sentences=False, category_only=False):
+
+    # will cache bert pooled output of question if provided with bert model
+    def load_data(self, file_name, limit, split_sentences=False, category_only=False, bert_model=None):
         with open(file_name) as json_data:
             temp_questions = []
             temp_answers = None
@@ -353,22 +361,33 @@ class Project_BERT_Data_Manager:
                             question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
                             temp_answers.append(answer)
                             temp_questions.append(question_encoded)
-
-                        self.num_questions += 1
-                        if (self.num_questions%1000 == 0):
-                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)
                     else:
                         question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
                         temp_answers.append(answer)
                         temp_questions.append(question_encoded)
 
-                        self.num_questions += 1
-                        if (self.num_questions%1000 == 0):
-                            print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)   
+                    self.num_questions += 1
+                    if (self.num_questions%1000 == 0):
+                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)   
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
             self.answer_indexes = self.answer_vocab.get_indexes(temp_answers) # turn all of the answers into indexes
+
+
+            if (not bert_model == None):
+                self.use_bert_question_cache = True
+                bert_model = bert_model.to(device)
+                print("caching train question BERT encodings..", flush=True)
+                for n, q in enumerate(self.questions):
+                    self.cached_bert_questions.append(bert_model(q.to(device).unsqueeze(dim=0)).pooler_output.tolist())
+                    if (n%200 == 0):
+                        torch.cuda.empty_cache()
+                        print("Completed: " + str((n/self.num_questions)*100) + "%", flush=True)
+                print(self.cached_bert_questions[0])
+                self.cached_bert_questions = torch.FloatTensor(self.cached_bert_questions)
+                print("finished caching train question BERT encodings!", flush=True)
+                
 
             print("Loaded " + str() + "", flush = True)
 
@@ -378,23 +397,34 @@ class Project_BERT_Data_Manager:
         if (encode_index):
             encode = lambda x : self.answer_vocab.encode_from_indexes(x)
 
-        element = (self.questions[self.current:self.current+1], encode(self.answer_indexes[self.current:self.current+1]))
+        question_representation = None
+        if (self.use_bert_question_cache):
+            question_representation = self.cached_bert_questions
+        else:
+            question_representation = self.questions
+
+        element = (question_representation[self.current:self.current+1], encode(self.answer_indexes[self.current:self.current+1]))
         self.current += 1
         return element
 
     def get_next_batch(self, encode_index=True):
         encode = lambda x : torch.LongTensor(x)
+        question_representation = None
         if (encode_index):
             encode = lambda x : self.answer_vocab.encode_from_indexes(x)
 
+        if (self.use_bert_question_cache):
+            question_representation = self.cached_bert_questions
+        else:
+            question_representation = self.questions
 
         if (self.current + self.batch_size > self.num_questions):
-            batch = (self.questions[self.current:], encode(self.answer_indexes[self.current:]))
+            batch = (question_representation[self.current:], encode(self.answer_indexes[self.current:]))
             self.current = self.num_questions
             self.epoch()
             return batch
         else:
-            batch = (self.questions[self.current:self.current+self.batch_size], encode(self.answer_indexes[self.current:self.current+self.batch_size]))
+            batch = (question_representation[self.current:self.current+self.batch_size], encode(self.answer_indexes[self.current:self.current+self.batch_size]))
             self.current += self.batch_size
             self.batch += 1
             return batch
@@ -418,6 +448,12 @@ class Project_BERT_Data_Manager:
     def get_answer_vector_length(self):
         print(self.answer_vocab.num_answers)
         return self.answer_vocab.num_answers
+
+    # This just returns the most recent encoded question 
+    def get_current_info(self):
+        if (self.current==0):
+            raise Exeption("No recent data provided - nothing to provide info on!")
+        return self.questions[self.current - 1]
 
 
 # used to test this file
