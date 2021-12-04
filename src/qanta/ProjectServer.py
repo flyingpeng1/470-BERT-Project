@@ -230,8 +230,8 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         elif(not wants_to_save):
             saved_recently = False 
 
-        # Evaluating the model accuarcy every 5 epochs
-        if (current_epoch%100==0):
+        # Evaluating the model accuarcy every few epochs
+        if ((current_epoch+1)%50==0):
             data.reset_epoch()
             agent.model_evaluate(data)
             data.reset_epoch()

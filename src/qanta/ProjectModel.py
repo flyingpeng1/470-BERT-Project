@@ -183,7 +183,7 @@ class BERTAgent():
             step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
-            if (int(data_manager.batch % 10000) == 0):
+            if (int(data_manager.batch % 1000) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
 
             # saves mid-epoch at supplied interval
@@ -208,7 +208,7 @@ class BERTAgent():
         if (len(answer_label) == 0):
             return 0
 
-        neg_labels = self.get_random_negatives(answer_label, 10)
+        neg_labels = self.get_random_negatives(answer_label, 200)
 
         self.optimizer.zero_grad()
         pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
@@ -247,11 +247,12 @@ class BERTAgent():
             print("Caching answer vectors...", flush=True)
             self.cache_answer_vectors()
 
+        print("Calculating accuracy", flush=True)
         with torch.no_grad():
             qs = self.model.embed_question(questions, expect_precalculated_pool=question_pooled)
 
             for encoded_q in qs:
-                sim = self.cos_sim(encoded_q, self.answer_vector_cache)
+                sim = self.cos_sim(encoded_q, self.answer_vector_cache.to(device))
                 values,indices = sim.topk(n, largest=True)
                 if (id_only):
                     answers.append(indices)
