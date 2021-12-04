@@ -179,8 +179,8 @@ class BERTAgent():
             step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
-            if (int(data_manager.batch % 100) == 0):
-                print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
+            if (int(data_manager.batch % 1000) == 0):
+                print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%", flush=True)
 
             # saves mid-epoch at supplied interval
             wants_to_save = int(data_manager.get_epoch_completion()) % (save_freq) == 0 and data_manager.get_epoch_completion() > 1 and not (save_freq >= 100)
