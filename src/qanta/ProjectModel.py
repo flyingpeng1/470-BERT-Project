@@ -136,14 +136,10 @@ class BERTAgent():
 
     # Helper for randomly sampling negative labels - important to use in WARP loss function
     def get_random_negatives(self, pos, num):
-
-        neg = [random.randrange(0, self.vocab.num_answers) for x in range(0, num)]
-        
-        # make sure positive label isn't in the distribution - this should be really rare anyway
-        while (pos in neg):
-            neg = [random.randrange(0, self.vocab.num_answers) for x in range(0, num)]
-
-        return torch.LongTensor([neg]).to(device)
+        vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
+        if (not len(vals == pos) == 0):
+            vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
+        return torch.unsqueeze(vals, 0)
 
     # Save model and its associated metadata 
     def save_model(self, metadata, save_location):
@@ -183,7 +179,7 @@ class BERTAgent():
             step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
-            if (int(data_manager.batch % 1000) == 0):
+            if (int(data_manager.batch % 100) == 0):
                 print("Epoch " + str(epoch) + " progress: " + str(data_manager.get_epoch_completion()) + "%")
 
             # saves mid-epoch at supplied interval

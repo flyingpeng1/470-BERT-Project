@@ -384,7 +384,6 @@ class Project_BERT_Data_Manager:
                     if (n%200 == 0):
                         torch.cuda.empty_cache()
                         print("Completed: " + str((n/self.num_questions)*100) + "%", flush=True)
-                print(self.cached_bert_questions[0])
                 self.cached_bert_questions = torch.FloatTensor(self.cached_bert_questions)
                 print("finished caching train question BERT encodings!", flush=True)
                 
