@@ -194,7 +194,8 @@ def web(host, port, vocab_file, model_file):
 @click.option('--manager_file', default=DATA_MANAGER_LOCATION)
 @click.option('--save_regularity', default=1000000)
 @click.option('--category_only', default=False, is_flag=True)
-def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only):
+@click.option('--eval_freq', default=0)
+def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only, eval_freq):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
@@ -207,7 +208,7 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     else:
         model = get_eval_only_bert_model(CACHE_LOCATION)
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-        data.load_data(train_file, data_limit, category_only=category_only, bert_model=model)
+        data.load_data(train_file, data_limit, category_only=category_only) #, bert_model=model
 
     if (resume):
         agent = BERTAgent(None, vocab)
@@ -230,8 +231,8 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
         elif(not wants_to_save):
             saved_recently = False 
 
-        # Evaluating the model accuarcy every few epochs
-        if ((current_epoch+1)%50==0):
+        # Evaluating the model accuarcy every n epochs
+        if ((eval_freq > 0) and (current_epoch+1)%eval_freq==0):
             data.reset_epoch()
             agent.model_evaluate(data)
             data.reset_epoch()
@@ -257,7 +258,8 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
 @click.option('--data_file', default=TEST_FILE_LOCATION)
 @click.option('--top_k', default=10)
 @click.option('--category_only', default=False, is_flag=True)
-def evaluate(vocab_file, model_file, split_sentences, dobuzztrain, buzztrainfile, preloaded_manager, manager_file, data_file, top_k, category_only): 
+@click.option('--data_limit', default=-1)
+def evaluate(vocab_file, model_file, split_sentences, dobuzztrain, buzztrainfile, preloaded_manager, manager_file, data_file, top_k, category_only, data_limit): 
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
     data = None
@@ -276,11 +278,11 @@ def evaluate(vocab_file, model_file, split_sentences, dobuzztrain, buzztrainfile
         data.batch_size = BATCH_SIZE # set the correct batch size
     else:
         data = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-        data.load_data(data_file, -1, split_sentences=split_sentences, category_only=category_only)
+        data.load_data(data_file, data_limit, split_sentences=split_sentences, category_only=category_only)
 
     print("Finished loading - commence evaluation.", flush = True)
 
-    agent.model_evaluate(data, save_loc, top_k)
+    agent.model_evaluate(data, save_loc, top_k, tokenizer)
 
     print("Finished evaluation")
 

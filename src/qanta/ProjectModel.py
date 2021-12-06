@@ -48,8 +48,9 @@ class QuizBERT(nn.Module):
 
         self.answers_embeds = nn.Embedding(answer_vector_length, EMB_DIM).to(device)
 
-
+        self.drop = nn.Dropout(p=DROPOUT).to(device)
         self.question_embeds = nn.Linear(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)#nn.Embedding(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)
+        self.question_hidden = nn.Linear(BERT_OUTPUT_LENGTH, HIDDEN_UNITS).to(device)
 
         if (not cache_dir==""):
             self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache_dir).to(device) #BERT-large uses too much VRAM
@@ -58,9 +59,8 @@ class QuizBERT(nn.Module):
             config = BertConfig()
             self.bert = BertModel(config).to(device)
 
-        # freezes all BERT layers and embeddings
-        #n=13
-        modules = [self.bert.embeddings, *self.bert.encoder.layer]
+        n=12
+        modules = [self.bert.embeddings, self.bert.encoder.layer[:n]]
         for module in modules:
             for param in module.parameters():
                 param.requires_grad = False
@@ -74,7 +74,7 @@ class QuizBERT(nn.Module):
             self.last_pooler_out = self.bert(question).pooler_output
         
         batch_size = neg.size(0)
-        question_vector = self.question_embeds(self.last_pooler_out.to(device))
+        question_vector = self.question_embeds(self.drop(self.question_hidden(self.last_pooler_out.to(device))))
         repeated_question_vector = question_vector.repeat((batch_size, 1)).view(batch_size, -1, 1)
 
         pos_res = torch.bmm(self.answers_embeds(torch.unsqueeze(pos, 0)), repeated_question_vector).squeeze(2)
@@ -87,9 +87,9 @@ class QuizBERT(nn.Module):
 
     def embed_question(self, question, expect_precalculated_pool=False):
         if (expect_precalculated_pool):
-            return self.question_embeds(question)
+            return self.question_embeds(self.drop(self.question_hidden(question)))
         else:
-            return self.question_embeds(self.bert(question).pooler_output)
+            return self.question_embeds(self.drop(self.question_hidden(self.bert(question).pooler_output)))
 
 
     # return last pooler output vector - will be used in buzztrain
@@ -104,6 +104,8 @@ class QuizBERT(nn.Module):
     def to_device(self, device):
         self.bert = self.bert.to(device)
         self.answers_embeds = self.answers_embeds.to(device)
+        self.drop = self.drop.to(device)
+        self.question_hidden = self.question_hidden.to(device)
         self.question_embeds = self.question_embeds.to(device)
         self = self.to(device)
 
@@ -129,7 +131,7 @@ class BERTAgent():
         if (not model == None):
             self.model = model
             self.model.to_device(device)
-            self.optimizer = torch.optim.Adamax(model.parameters())#, lr=0.01
+            self.optimizer = torch.optim.Adamax(self.model.parameters(), lr=0.0001)#, lr=0.01
         else:
             print("Agent is waiting for model load!", flush = True)
 
@@ -160,7 +162,7 @@ class BERTAgent():
         else:
             print("No metadata found / no data manager provided - starting from epoch 0")
 
-        self.optimizer = torch.optim.Adamax(self.model.parameters())
+        self.optimizer = torch.optim.Adamax(self.model.parameters(), lr=0.0001)
         print("Loaded model from: \"" + file_name + "\"", flush = True)
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
@@ -204,7 +206,7 @@ class BERTAgent():
         if (len(answer_label) == 0):
             return 0
 
-        neg_labels = self.get_random_negatives(answer_label, 200)
+        neg_labels = self.get_random_negatives(answer_label, 10)
 
         self.optimizer.zero_grad()
         pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
@@ -242,8 +244,8 @@ class BERTAgent():
             print("Must cache answer vectors before calculating KNN", flush=True)
             print("Caching answer vectors...", flush=True)
             self.cache_answer_vectors()
+            print("Finished answer caching.. commnece accuracy evaluation.", flush=True)
 
-        print("Calculating accuracy", flush=True)
         with torch.no_grad():
             qs = self.model.embed_question(questions, expect_precalculated_pool=question_pooled)
 
@@ -261,7 +263,7 @@ class BERTAgent():
             return answers
 
 
-    def model_evaluate(self, data_manager, save_loc=None, k=10):
+    def model_evaluate(self, data_manager, save_loc=None, k=10, tokenizer=None):
         epoch = data_manager.full_epochs
         pooled_questions = data_manager.use_bert_question_cache
         using_gpu = (not device == "cpu")
@@ -295,14 +297,20 @@ class BERTAgent():
                     guess = guesses[0]
                     correct = (labels[0] == guess)
 
+                    full_text = None
+                    if (not tokenizer == None):
+                        full_text = tokenizer.decode(data_manager.get_current_info())
+
                     meta = {
                         "guess" : guess[0][0],
                         "score" : guess[0][1].cpu().tolist(),
                         "guessId" : guess[0][2].cpu().tolist(),
+                        "kguess" : [val[0] for val in guess],
                         "kguess_ids" : [val[2].cpu().tolist() for val in guess],
                         "kguess_scores" : [val[1].cpu().tolist() for val in guess],
                         "question_nonzero_tokens": torch.count_nonzero(data_manager.get_current_info()).tolist(), 
                         "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        "full_question" : full_text,
                         "label" : correct
                     }
                     guess_metadata.append(meta)
@@ -316,7 +324,6 @@ class BERTAgent():
             if (save_loc==None):
                 print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
             else:
-                print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
                 textfile = open(save_loc, "w")
                 json_dict = {
                         "buzzer_data":guess_metadata
