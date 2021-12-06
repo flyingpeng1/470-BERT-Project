@@ -22,18 +22,19 @@ from transformers import BertConfig
 
 #from warp_loss import warp_loss
 import random
+import time
 
 from qanta.ProjectDataLoader import *
 from qanta.warp_loss import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+cuda_bool = device == "cuda" 
 
 CACHE_LOCATION = "cache"
 BERT_OUTPUT_LENGTH = 768
 HIDDEN_UNITS = 768
 DROPOUT = .2
 EMB_DIM=1000
-
 
 #=======================================================================================================
 # The actual model that is managed by pytorch - QuizBERT, excelsior!!!
@@ -67,6 +68,7 @@ class QuizBERT(nn.Module):
 
     # computes output vector using pooled BERT output
     def forward(self, question, pos, neg, expect_precalculated_pool=False):
+
         # allows to precalculate the BERT output for faster training
         if (expect_precalculated_pool):
             self.last_pooler_out = question
@@ -124,6 +126,7 @@ class BERTAgent():
         self.model = None
         self.optimizer = None
 
+        self.time_map = None
         self.answer_vector_cache = None
         self.cos_sim = nn.CosineSimilarity(dim=-1)
 
@@ -138,9 +141,12 @@ class BERTAgent():
 
     # Helper for randomly sampling negative labels - important to use in WARP loss function
     def get_random_negatives(self, pos, num):
+        start_time = time.time()
         vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
         if (not len(vals == pos) == 0):
             vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
+
+        self.time_map["total_rand_time"]+= time.time()-start_time
         return torch.unsqueeze(vals, 0)
 
     # Save model and its associated metadata 
@@ -169,16 +175,15 @@ class BERTAgent():
     # save_freq
     def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
-        self.epoch_loss = 0
-        steps = 0.0
-        step_avg = 0.0
         use_question_cache = data_manager.use_bert_question_cache
+
+        self.time_map = {"total_forward_time":0, "total_rand_time":0, "total_loss_time":0, "total_optimization_time":0, "warp_p1":0, "warp_p2":0, "warp_p3":0, "warp_p4":0}
+        start_time = time.time()
 
         print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
-            steps+=1
             inputs, labels = data_manager.get_next_batch(encode_index=False)
-            step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
+            self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
             if (int(data_manager.batch % 1000) == 0):
@@ -192,8 +197,15 @@ class BERTAgent():
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
 
-        #print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
-        #print("train accuracy: " + str((step_avg/steps)*100) + "%")
+        print("Finished in " + str(time.time()-start_time) + "s")
+        #print("Total rand time: " + str(self.time_map["total_rand_time"]) + "s")
+        #print("Total forward time: " + str(self.time_map["total_forward_time"]) + "s")
+        #print("Total loss time: " + str(self.time_map["total_loss_time"]) + "s")
+        #print("Total optimization time: " + str(self.time_map["total_optimization_time"]) + "s")
+        #print("Total loss p1 time: " + str(self.time_map["warp_p1"]) + "s")
+        #print("Total loss p2 time: " + str(self.time_map["warp_p2"]) + "s")
+        #print("Total loss p3 time: " + str(self.time_map["warp_p3"]) + "s")
+        #print("Total loss p4 time: " + str(self.time_map["warp_p4"]) + "s")
 
         # saves every epoch if allowed
         if (not save_freq > 100):
@@ -206,18 +218,23 @@ class BERTAgent():
         if (len(answer_label) == 0):
             return 0
 
-        neg_labels = self.get_random_negatives(answer_label, 10)
+        neg_labels = self.get_random_negatives(answer_label, 400)
 
         self.optimizer.zero_grad()
-        pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
-        #print('Positive Labels:', answer_label)
-        #print('Negative Labels:', neg_labels)
-        #print('Model positive scores:', pos_res)
-        #print('Model negative scores:', neg_res)
-        loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device)
-        loss.backward()
 
+        #start_time = time.time()
+        pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
+        #self.time_map["total_forward_time"]+=(time.time() - start_time)
+
+        #start_time = time.time()
+        loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device, time_map=self.time_map, cuda_bool=cuda_bool)
+        #self.time_map["total_loss_time"]+=(time.time() - start_time)
+
+        #start_time = time.time()
+        loss.backward()
         self.optimizer.step()
+        #self.time_map["total_optimization_time"]+=(time.time() - start_time)
+
         self.total_examples += 1
 
         return 0
