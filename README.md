@@ -108,7 +108,7 @@ python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --t
 
 python -m qanta.ProjectServer web --vocab_file ../data/QuizBERTSmall.vocab --model_file ../data/QuizBERT.model
 
-python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json
+python -m qanta.ProjectServer vocab --save_location ../data/QuizBERT.vocab --data_file ../data/qanta.train.2018.04.18.json
 
 python -m qanta.ProjectServer evaluate --vocab_file ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json --model_file ../data/QuizBERT.model
 
@@ -125,4 +125,9 @@ sudo docker-compose run -d --name trainer bert_qb ./cli train --epochs 30 --save
 
 sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
 
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 2
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 200
+
+sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
+
+
+python -m qanta.ProjectServer evaluate --data_file ../data/qanta.dev.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --category_only --dobuzztrain

@@ -22,18 +22,19 @@ from transformers import BertConfig
 
 #from warp_loss import warp_loss
 import random
+import time
 
 from qanta.ProjectDataLoader import *
 from qanta.warp_loss import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+cuda_bool = device == "cuda" 
 
 CACHE_LOCATION = "cache"
 BERT_OUTPUT_LENGTH = 768
 HIDDEN_UNITS = 768
 DROPOUT = .2
 EMB_DIM=1000
-
 
 #=======================================================================================================
 # The actual model that is managed by pytorch - QuizBERT, excelsior!!!
@@ -48,8 +49,9 @@ class QuizBERT(nn.Module):
 
         self.answers_embeds = nn.Embedding(answer_vector_length, EMB_DIM).to(device)
 
-
+        self.drop = nn.Dropout(p=DROPOUT).to(device)
         self.question_embeds = nn.Linear(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)#nn.Embedding(BERT_OUTPUT_LENGTH, EMB_DIM).to(device)
+        self.question_hidden = nn.Linear(BERT_OUTPUT_LENGTH, HIDDEN_UNITS).to(device)
 
         if (not cache_dir==""):
             self.bert = BertModel.from_pretrained("bert-base-uncased", cache_dir=cache_dir).to(device) #BERT-large uses too much VRAM
@@ -58,15 +60,15 @@ class QuizBERT(nn.Module):
             config = BertConfig()
             self.bert = BertModel(config).to(device)
 
-        # freezes all BERT layers and embeddings
-        #n=13
-        modules = [self.bert.embeddings, *self.bert.encoder.layer]
+        n=12
+        modules = [self.bert.embeddings, self.bert.encoder.layer[:n]]
         for module in modules:
             for param in module.parameters():
                 param.requires_grad = False
 
     # computes output vector using pooled BERT output
     def forward(self, question, pos, neg, expect_precalculated_pool=False):
+
         # allows to precalculate the BERT output for faster training
         if (expect_precalculated_pool):
             self.last_pooler_out = question
@@ -74,7 +76,7 @@ class QuizBERT(nn.Module):
             self.last_pooler_out = self.bert(question).pooler_output
         
         batch_size = neg.size(0)
-        question_vector = self.question_embeds(self.last_pooler_out.to(device))
+        question_vector = self.question_embeds(self.drop(self.question_hidden(self.last_pooler_out.to(device))))
         repeated_question_vector = question_vector.repeat((batch_size, 1)).view(batch_size, -1, 1)
 
         pos_res = torch.bmm(self.answers_embeds(torch.unsqueeze(pos, 0)), repeated_question_vector).squeeze(2)
@@ -87,9 +89,9 @@ class QuizBERT(nn.Module):
 
     def embed_question(self, question, expect_precalculated_pool=False):
         if (expect_precalculated_pool):
-            return self.question_embeds(question)
+            return self.question_embeds(self.drop(self.question_hidden(question)))
         else:
-            return self.question_embeds(self.bert(question).pooler_output)
+            return self.question_embeds(self.drop(self.question_hidden(self.bert(question).pooler_output)))
 
 
     # return last pooler output vector - will be used in buzztrain
@@ -104,6 +106,8 @@ class QuizBERT(nn.Module):
     def to_device(self, device):
         self.bert = self.bert.to(device)
         self.answers_embeds = self.answers_embeds.to(device)
+        self.drop = self.drop.to(device)
+        self.question_hidden = self.question_hidden.to(device)
         self.question_embeds = self.question_embeds.to(device)
         self = self.to(device)
 
@@ -122,6 +126,7 @@ class BERTAgent():
         self.model = None
         self.optimizer = None
 
+        self.time_map = None
         self.answer_vector_cache = None
         self.cos_sim = nn.CosineSimilarity(dim=-1)
 
@@ -129,16 +134,19 @@ class BERTAgent():
         if (not model == None):
             self.model = model
             self.model.to_device(device)
-            self.optimizer = torch.optim.Adamax(model.parameters())#, lr=0.01
+            self.optimizer = torch.optim.Adamax(self.model.parameters(), lr=0.0001)#, lr=0.01
         else:
             print("Agent is waiting for model load!", flush = True)
 
 
     # Helper for randomly sampling negative labels - important to use in WARP loss function
     def get_random_negatives(self, pos, num):
+        start_time = time.time()
         vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
         if (not len(vals == pos) == 0):
             vals = torch.randperm(self.vocab.num_answers, device=device)[:num]
+
+        self.time_map["total_rand_time"]+= time.time()-start_time
         return torch.unsqueeze(vals, 0)
 
     # Save model and its associated metadata 
@@ -160,23 +168,22 @@ class BERTAgent():
         else:
             print("No metadata found / no data manager provided - starting from epoch 0")
 
-        self.optimizer = torch.optim.Adamax(self.model.parameters())
+        self.optimizer = torch.optim.Adamax(self.model.parameters(), lr=0.0001)
         print("Loaded model from: \"" + file_name + "\"", flush = True)
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
     # save_freq
     def train_epoch(self, data_manager, save_freq, save_loc):
         epoch = data_manager.full_epochs
-        self.epoch_loss = 0
-        steps = 0.0
-        step_avg = 0.0
         use_question_cache = data_manager.use_bert_question_cache
+
+        self.time_map = {"total_forward_time":0, "total_rand_time":0, "total_loss_time":0, "total_optimization_time":0, "warp_p1":0, "warp_p2":0, "warp_p3":0, "warp_p4":0}
+        start_time = time.time()
 
         print("Starting train epoch #" + str(epoch), flush = True)
         while epoch == data_manager.full_epochs:
-            steps+=1
             inputs, labels = data_manager.get_next_batch(encode_index=False)
-            step_avg += self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
+            self.train_step(epoch, inputs.to(device), labels.to(device), data_manager.batch_size, use_question_cache=use_question_cache)
             torch.cuda.empty_cache() # clear old tensors from VRAM
 
             if (int(data_manager.batch % 1000) == 0):
@@ -190,8 +197,15 @@ class BERTAgent():
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
 
-        #print('epoch average loss: %.5f' % (self.epoch_loss / (self.total_examples+1 / (epoch+1))), flush = True)
-        #print("train accuracy: " + str((step_avg/steps)*100) + "%")
+        print("Finished in " + str(time.time()-start_time) + "s")
+        #print("Total rand time: " + str(self.time_map["total_rand_time"]) + "s")
+        #print("Total forward time: " + str(self.time_map["total_forward_time"]) + "s")
+        #print("Total loss time: " + str(self.time_map["total_loss_time"]) + "s")
+        #print("Total optimization time: " + str(self.time_map["total_optimization_time"]) + "s")
+        #print("Total loss p1 time: " + str(self.time_map["warp_p1"]) + "s")
+        #print("Total loss p2 time: " + str(self.time_map["warp_p2"]) + "s")
+        #print("Total loss p3 time: " + str(self.time_map["warp_p3"]) + "s")
+        #print("Total loss p4 time: " + str(self.time_map["warp_p4"]) + "s")
 
         # saves every epoch if allowed
         if (not save_freq > 100):
@@ -204,18 +218,23 @@ class BERTAgent():
         if (len(answer_label) == 0):
             return 0
 
-        neg_labels = self.get_random_negatives(answer_label, 200)
+        neg_labels = self.get_random_negatives(answer_label, 400)
 
         self.optimizer.zero_grad()
-        pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
-        #print('Positive Labels:', answer_label)
-        #print('Negative Labels:', neg_labels)
-        #print('Model positive scores:', pos_res)
-        #print('Model negative scores:', neg_res)
-        loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device)
-        loss.backward()
 
+        #start_time = time.time()
+        pos_res, neg_res = self.model(input_question.squeeze(1), answer_label.to(device), neg_labels, use_question_cache)
+        #self.time_map["total_forward_time"]+=(time.time() - start_time)
+
+        #start_time = time.time()
+        loss = warp_loss(pos_res, neg_res, num_labels=self.vocab.num_answers, device=device, time_map=self.time_map, cuda_bool=cuda_bool)
+        #self.time_map["total_loss_time"]+=(time.time() - start_time)
+
+        #start_time = time.time()
+        loss.backward()
         self.optimizer.step()
+        #self.time_map["total_optimization_time"]+=(time.time() - start_time)
+
         self.total_examples += 1
 
         return 0
@@ -242,8 +261,8 @@ class BERTAgent():
             print("Must cache answer vectors before calculating KNN", flush=True)
             print("Caching answer vectors...", flush=True)
             self.cache_answer_vectors()
+            print("Finished answer caching.. commnece accuracy evaluation.", flush=True)
 
-        print("Calculating accuracy", flush=True)
         with torch.no_grad():
             qs = self.model.embed_question(questions, expect_precalculated_pool=question_pooled)
 
@@ -261,7 +280,7 @@ class BERTAgent():
             return answers
 
 
-    def model_evaluate(self, data_manager, save_loc=None, k=10):
+    def model_evaluate(self, data_manager, save_loc=None, k=10, tokenizer=None):
         epoch = data_manager.full_epochs
         pooled_questions = data_manager.use_bert_question_cache
         using_gpu = (not device == "cpu")
@@ -295,14 +314,20 @@ class BERTAgent():
                     guess = guesses[0]
                     correct = (labels[0] == guess)
 
+                    full_text = None
+                    if (not tokenizer == None):
+                        full_text = tokenizer.decode(data_manager.get_current_info())
+
                     meta = {
                         "guess" : guess[0][0],
                         "score" : guess[0][1].cpu().tolist(),
                         "guessId" : guess[0][2].cpu().tolist(),
+                        "kguess" : [val[0] for val in guess],
                         "kguess_ids" : [val[2].cpu().tolist() for val in guess],
                         "kguess_scores" : [val[1].cpu().tolist() for val in guess],
                         "question_nonzero_tokens": torch.count_nonzero(data_manager.get_current_info()).tolist(), 
                         "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        "full_question" : full_text,
                         "label" : correct
                     }
                     guess_metadata.append(meta)
@@ -316,7 +341,6 @@ class BERTAgent():
             if (save_loc==None):
                 print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
             else:
-                print("Final accuarcy score: " + str((acc/num_batches)*100) + "%", flush = True)
                 textfile = open(save_loc, "w")
                 json_dict = {
                         "buzzer_data":guess_metadata
