@@ -93,6 +93,23 @@ class QuizBERT(nn.Module):
         else:
             return self.question_embeds(self.drop(self.question_hidden(self.bert(question).pooler_output)))
 
+    def unfreeze_layers(self, layers):
+        modules = [self.bert.embeddings, *self.bert.encoder.layer]
+        
+        # freeze everything
+        for module in modules:
+            for param in module.parameters():
+                param.requires_grad = False
+
+        # selectively unfreeze
+        unfreeze = []
+        print(len(modules))
+        for l in layers:
+            unfreeze.append(modules[int(l)])
+
+        for module in unfreeze:
+            for param in module.parameters():
+                param.requires_grad = True
 
     # return last pooler output vector - will be used in buzztrain
     def get_last_pooler_output(self):
@@ -254,7 +271,7 @@ class BERTAgent():
         with torch.no_grad():
             self.answer_vector_cache = self.model.embed_answer(torch.LongTensor(range(0, self.vocab.num_answers)).to(device))
 
-    def answer_knn(self, questions, n, question_pooled=False, id_only=False):
+    def answer_knn(self, questions, k, question_pooled=False, id_only=False):
         answers = []
 
         if (self.answer_vector_cache == None):
@@ -268,7 +285,7 @@ class BERTAgent():
 
             for encoded_q in qs:
                 sim = self.cos_sim(encoded_q, self.answer_vector_cache.to(device))
-                values,indices = sim.topk(n, largest=True)
+                values,indices = sim.topk(k, largest=True)
                 if (id_only):
                     answers.append(indices)
                 else:
@@ -278,6 +295,27 @@ class BERTAgent():
             return torch.LongTensor(answers)
         else:
             return answers
+
+    # will return whatever buzzer needs to create its input vector
+    def model_topk(self, encoded_questions, tokenizer, k=1):
+        output = []
+        question = self.model.embed_question(q, expect_precalculated_pool=False)
+        for q in encoded_questions:
+            guess = answer_knn(q.unsqueeze(0), k)
+            full_text = tokenizer.decode(q)
+            meta = {
+                        "guess" : guess[0][0],
+                        "score" : guess[0][1].cpu().tolist(),
+                        "guessId" : guess[0][2].cpu().tolist(),
+                        "kguess" : [val[0] for val in guess],
+                        "kguess_ids" : [val[2].cpu().tolist() for val in guess],
+                        "kguess_scores" : [val[1].cpu().tolist() for val in guess],
+                        "question_nonzero_tokens": torch.count_nonzero(q).tolist(), 
+                        "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        "full_question" : full_text
+                    }
+            output.append(meta)
+        return output
 
 
     def model_evaluate(self, data_manager, save_loc=None, k=10, tokenizer=None):

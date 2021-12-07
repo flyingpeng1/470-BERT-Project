@@ -7,6 +7,8 @@ import json
 from torch.utils.data import Dataset, DataLoader
 from qanta.ProjectDataLoader import *
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 #=======================================================================================================
 # Data formatting
 #=======================================================================================================
@@ -85,11 +87,17 @@ class LogRegModel(nn.Module):
 
 class LogRegAgent():
     def __init__(self, model, vocab, learnrate=0.01):
-        self.model = model
+        if (model):
+            self.model = model.to(device)
+            self.optimizer = torch.optim.SGD(model.parameters(), lr=learnrate)
+        else:
+            print("Buzzer waiting for model to load", flush=True)
+
+        self.learnrate = learnrate
         self.vocab = vocab
         self.data = None
         self.criterion = nn.BCELoss()
-        self.optimizer = torch.optim.SGD(model.parameters(), lr=learnrate)
+
 
     def load_data(self, buzzer_data_file, batch=1):
         data = GuessDataset(vocab)
@@ -101,17 +109,32 @@ class LogRegAgent():
 
     def step(self, epoch, ex, model, inputs, labels):
         self.optimizer.zero_grad()
-        predictions = model(inputs)
-        loss = self.criterion(predictions, labels)
+        predictions = model(inputs.to(device))
+        loss = self.criterion(predictions, labels.to(device))
         loss.backward()
         self.optimizer.step()
 
-    def train(self, num_epochs, model, inputs, labels):
+    # Save model and its associated metadata 
+    def save_model(self, metadata, save_location):
+        pickle.dump({"model": self.model, "metadata":metadata}, open(save_location, "wb+"))
+        print("Saved model to: \"" + save_location + "\"", flush=True)
+
+    # Load the model and its associated metadata
+    def load_model(self, location):
+        load = pickle.load(open(location,'rb'))
+        self.model = load["model"]
+        self.model.to(device)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learnrate)
+        print("Loaded model from \"" + location + "\"", flush=True)
+
+    def train(self, num_epochs, model, inputs, labels, save_loc):
         # Iterations
         for epoch in range(num_epochs):
             for ex, (inputs, labels) in enumerate(self.data):
                 self.step(epoch, ex, model, inputs, labels)
 
+        if (save_loc):
+            self.save_model({"epochs":num_epochs}, save_loc)
         # acc = model.evaluate(test)
         # print("Accuracy: %f" % acc)
         # torch.save(model.state_dict(), "trained_model.th")

@@ -130,4 +130,8 @@ python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --t
 sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
 
 
-python -m qanta.ProjectServer evaluate --data_file ../data/qanta.dev.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --category_only --dobuzztrain
+python -m qanta.ProjectServer evaluate --data_file ../data/qanta.train.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --dobuzztrain --buzztrainfile ../data/buzztrain.json
+
+
+
+--unfreeze_layers 11+12+13

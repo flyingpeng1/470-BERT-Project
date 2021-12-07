@@ -11,6 +11,7 @@ from flask import Flask, jsonify, request
 
 from qanta.ProjectModel import *
 from qanta.ProjectDataLoader import * 
+from qanta.ProjectBuzzer import *
 from qanta import util
 
 if (torch.cuda.is_available()):
@@ -24,6 +25,7 @@ CACHE_LOCATION = "/src/cache"
 VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
 DATA_MANAGER_LOCATION = "/src/data/QBERT_Data.manager"
 MODEL_LOCATION = "/src/data/QuizBERT.model"
+BUZZER_LOCATION = "/src/data/QuizBERTBuzzer.model"
 TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
 TEST_FILE_LOCATION = "/src/data/qanta.test.2018.04.18.json"
 TRAINING_PROGRESS_LOCATION = "training_progress"
@@ -49,16 +51,19 @@ def get_eval_only_bert_model(cache_location):
 #=======================================================================================================
 # Combines guesser and buzzer outputs
 #=======================================================================================================
-def guess_and_buzz(guesser, text):
-    out = guesser.guess(text)
-    return (out, False)
+def guess_and_buzz(guesser, buzzer, text):
+    output = guesser.guess(text)
+    buzz = buzzer.buzz(output)
+    return (out["guess"], buzz)
 
 #=======================================================================================================
 # Combines batch guesser and buzzer outputs
 #=======================================================================================================
-def batch_guess_and_buzz(guesser, text):
+def batch_guess_and_buzz(guesser, buzzer, text):
     out = guesser.batch_guess(text)
-    return [(g, False) for g in out]
+    guesses = [g["guess"] for g in out]
+    buzzes = buzzer.batch_buzz(out)
+    return zip(guesses, buzzes)
 
 #=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
@@ -73,6 +78,18 @@ def load_model(callback, vocab_file, model_file):
     agent.model_set_mode("eval")
     
     callback(agent, tokenizer)
+
+#=======================================================================================================
+# Executed in seperate thread so that the model can load without holding up the server.
+#=======================================================================================================
+def load_buzzer(callback, vocab_file, buzzer_file):
+    vocab = load_vocab(vocab_file)
+
+    agent = LogRegAgent(None, vocab)
+    agent.load_model(buzzer_file)
+    agent.model.eval()
+    
+    callback(agent)
 
 #=======================================================================================================
 # Generates gueses using a model from quizbowl questions.
@@ -94,15 +111,14 @@ class Project_Guesser():
         # Tokenize question
         encoded_question = torch.LongTensor([encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)]).to(device)
 
-        print(encoded_question)
+        #print(encoded_question)
 
-        output = self.agent.model_forward(encoded_question)
+        output = self.agent.model_topk(encoded_question)
 
-        print(self.agent.vocab.decode_top_n(output.cpu(), 10))
-        print(self.agent.model.get_last_pooler_output())
+        #print(self.agent.vocab.decode_top_n(output.cpu(), 10))
+        #print(self.agent.model.get_last_pooler_output())
 
-        guesses = self.agent.vocab.decode(output)[0]
-        return guesses
+        return output
 
     # called with an array of questions, returns a guess batch
     def batch_guess(self, text):
@@ -112,10 +128,9 @@ class Project_Guesser():
         # Tokenize questions
         encoded_questions = torch.LongTensor([encode_question(t, self.tokenizer, MAX_QUESTION_LENGTH) for t in text]).to(device)
         
-        output = self.agent.model_forward(encoded_questions)
-        guess = self.agent.vocab.decode(output)
+        output = self.agent.model_topk(encoded_questions)
 
-        return [x for x in guess]
+        return output
 
     # Called to determine if the model has been loaded
     def isReady(self):
@@ -126,29 +141,51 @@ class Project_Guesser():
         self.agent = agent
         self.tokenizer = tokenizer
         self.ready = True
-        print("Model is loaded!")
+        print("Model is loaded!", flush=True)
+
+class Project_Buzzer():
+    def __init__(self, buzzer_file, vocab_file):
+        self.agent = None
+        self.tokenizer = None
+        self.ready = False
+        self.load_thread = threading.Thread(target=load_buzzer, args=[self.load_callback, vocab_file, buzzer_file])
+        self.load_thread.start()
+
+    def load_callback(self, agent):
+        self.agent = agent
+        self.ready = True
+        print("Buzzer is loaded!", flush=True)
+
+    # Will return buzz in future
+    def buzz(self, guesser_output):
+        return ([False])[0]
+
+    # Will return buzz in future
+    def batch_buzz(self, guesser_output):
+        return [False for g in guesser_output]
 
 
 #=======================================================================================================
 # Called to start qb server.
 #=======================================================================================================
-def create_app(vocab_file, model_file):
+def create_app(vocab_file, model_file, buzzer_file):
     guesser = Project_Guesser(vocab_file, model_file)
+    buzzer = Project_Buzzer(buzzer_file)
     app = Flask(__name__)
 
     @app.route('/api/1.0/quizbowl/act', methods=['POST'])
     def act():
         question = request.json['text']
-        guess, buzz = guess_and_buzz(guesser, question)
+        guess, buzz = guess_and_buzz(guesser, buzzer, question)
         return jsonify({'guess': guess, 'buzz': True if buzz else False})
 
     @app.route('/api/1.0/quizbowl/status', methods=['GET'])
     def status():
-        print(guesser.isReady())
+        print(guesser.isReady() and buzzer.isReady())
         return jsonify({
             'batch': True,
             'batch_size': 10,
-            'ready': guesser.isReady(),
+            'ready': guesser.isReady() and buzzer.isReady(),
             'include_wiki_paragraphs': False
         })
 
@@ -156,8 +193,8 @@ def create_app(vocab_file, model_file):
     def batch_act():
         questions = [q['text'] for q in request.json['questions']]
         return jsonify([
-            {'guess': guess, 'buzz': True if buzz else False}
-            for guess, buzz in batch_guess_and_buzz(guesser, questions)
+            {'guess': guess, 'buzz': buzz}
+            for guess, buzz in batch_guess_and_buzz(guesser, buzzer, questions)
         ])
 
     return app
@@ -177,8 +214,9 @@ def cli():
 #@click.option('--disable-batch', default=False, is_flag=True)
 @click.option('--vocab_file', default=VOCAB_LOCATION)
 @click.option('--model_file', default=MODEL_LOCATION)
-def web(host, port, vocab_file, model_file):    
-    app = create_app(vocab_file, model_file)
+@click.option('--buzzer_file', default=BUZZER_LOCATION)
+def web(host, port, vocab_file, model_file, buzzer_file):    
+    app = create_app(vocab_file, model_file, buzzer_file)
     print("Starting web app")
     app.run(host=host, port=port, debug=True)
 
@@ -195,7 +233,9 @@ def web(host, port, vocab_file, model_file):
 @click.option('--save_regularity', default=1000000)
 @click.option('--category_only', default=False, is_flag=True)
 @click.option('--eval_freq', default=0)
-def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only, eval_freq):
+@click.option('--unfreeze_layers', default="13") # num layers to unfreeze, seperated by +
+
+def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only, eval_freq, unfreeze_layers):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
@@ -218,7 +258,9 @@ def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, prelo
     
     print("Finished loading - commence training.", flush = True)
 
-    #agent.model_set_mode("train")
+    train_layers = unfreeze_layers.split("+")
+
+    agent.model.unfreeze_layers(train_layers)
 
     saved_recently = False
     current_epoch = data.full_epochs
