@@ -361,14 +361,15 @@ class Project_BERT_Data_Manager:
                             question_encoded = encode_question(partial_text, self.tokenizer, self.maximum_question_length)
                             temp_answers.append(answer)
                             temp_questions.append(question_encoded)
+                            self.num_questions += 1
                     else:
                         question_encoded = encode_question(text, self.tokenizer, self.maximum_question_length)
                         temp_answers.append(answer)
                         temp_questions.append(question_encoded)
+                        self.num_questions += 1
 
-                    self.num_questions += 1
                     if (self.num_questions%1000 == 0):
-                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "%", flush = True)   
+                        print("Loading dataset - Completed: " + str(self.num_questions/questions_length * 100) + "% Total: " + str(self.num_questions), flush = True)   
 
             self.questions = torch.LongTensor(temp_questions)
             self.questions = self.questions
