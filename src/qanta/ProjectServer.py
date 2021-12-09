@@ -345,7 +345,8 @@ def vocab(save_location, data_file, category_only):
 @click.option('--limit', default=-1)
 @click.option('--category_only', default=False, is_flag=True)
 @click.option('--cache_pool', default=False, is_flag=True)
-def makemanager(vocab_location, save_location, data_file, limit, category_only, cache_pool):
+@click.option('--split_sentences', default=False, is_flag=True)
+def makemanager(vocab_location, save_location, data_file, limit, category_only, cache_pool, split_sentences):
     vocab = load_vocab(vocab_location)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     
@@ -354,7 +355,7 @@ def makemanager(vocab_location, save_location, data_file, limit, category_only, 
         model = get_eval_only_bert_model(CACHE_LOCATION)
     
     loader = Project_BERT_Data_Manager(MAX_QUESTION_LENGTH, vocab, BATCH_SIZE, tokenizer)
-    loader.load_data(data_file, limit, category_only=category_only, bert_model=model)
+    loader.load_data(data_file, limit, category_only=category_only, split_sentences=split_sentences, bert_model=model)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
 # Run to check if cuda is available.
