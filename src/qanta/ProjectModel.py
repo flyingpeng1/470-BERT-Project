@@ -364,7 +364,7 @@ class BERTAgent():
                         "kguess_ids" : [val[2].cpu().tolist() for val in guess],
                         "kguess_scores" : [val[1].cpu().tolist() for val in guess],
                         "question_nonzero_tokens": torch.count_nonzero(data_manager.get_current_info()).tolist(), 
-                        "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        #"pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
                         "full_question" : full_text,
                         "label" : correct
                     }
