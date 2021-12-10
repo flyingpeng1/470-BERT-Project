@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import json
+import pandas
 
 from torch.utils.data import Dataset, DataLoader
 from qanta.ProjectDataLoader import *
@@ -10,7 +11,20 @@ from qanta.ProjectDataLoader import *
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #=======================================================================================================
-# Data formatting
+# Util
+#=======================================================================================================
+def give_confidence(guess, question_text):
+    count = 0
+    repeated = ""
+    df = pandas.read_csv("wiki_links.csv",dtype=str)
+    for i in df[guess]:
+        if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
+            repeated += i
+            count += 1
+    return count
+
+#=======================================================================================================
+# Data Classes
 #=======================================================================================================
 class Sample:
     def __init__(self, guess_data, vocab):
