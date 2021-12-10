@@ -27,7 +27,7 @@ def give_confidence(guess, question_text):
 # Data Classes
 #=======================================================================================================
 class Sample:
-    def __init__(self, guess_data, vocab):
+    def __init__(self, guess_data, vocab, labeled=True):
         """
         Create a new example
 
@@ -35,6 +35,10 @@ class Sample:
         words -- The words in a list of "word:count" format
         vocab -- The vocabulary to use as features (list)
         """
+        self.x = None
+        self.y = None
+
+        # FEATURES
         # first chunk of feature vector is one-hot encoding of answer
         answer_tensor = vocab.encode_from_indexes([guess_data["guessId"]])[0]
         x = answer_tensor.detach().to("cpu").numpy()
@@ -47,35 +51,41 @@ class Sample:
         temp = [guess_data["kguess_scores"][0] - x for x in guess_data["kguess_scores"][1:]]
         x = np.append(x, sum(temp)/len(temp))
         # question length
-        x = np.append(x, len(guess_data["full_question"]))
+        x = np.append(x, guess_data["question_nonzero_tokens"]/412)
         # num links in question
         x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"]))
 
         self.x = x
-        self.y = float(guess_data["label"])
+        if labeled:
+            self.y = float(guess_data["label"])
 
 class GuessDataset(Dataset):
     def __init__(self, vocab):
         self.vocab = vocab
-        # num_features = answer_space_size + num_additional_features
+        # Add number of additional features to size of vocab to get total num features
         self.num_features = self.vocab.num_answers + 5
         self.feature = None
         self.label = None
         self.num_samples = 0
 
-    def initialize(self, buzzer_data_file):
+    def initialize(self, buzzer_data, is_file=True, labeled=True):
         dataset = []
-        data = json.load(buzzer_data_file)
+        if is_file:
+            data = json.load(buzzer_data)
+        else:
+            data = buzzer_data
+
         for guess_data in data["buzzer_data"]:
-            ex = Sample(guess_data, self.vocab)
+            ex = Sample(guess_data, self.vocab, labeled=labeled)
             dataset.append(ex)
+            self.num_samples += 1
 
         features = np.stack([ex.x for ex in dataset])
-        label = np.stack([np.array([ex.y]) for ex in dataset])
-
         self.feature = torch.from_numpy(features.astype(np.float32))
-        self.label = torch.from_numpy(label.astype(np.float32))
-        self.num_samples = len(self.label)
+        if labeled:
+            label = np.stack([np.array([ex.y]) for ex in dataset])
+            self.label = torch.from_numpy(label.astype(np.float32))
+
         assert self.num_samples == len(self.feature)
 
     # support indexing such that dataset[i] can be used to get i-th sample
@@ -91,16 +101,15 @@ class GuessDataset(Dataset):
 # Model and Training
 #=======================================================================================================
 class LogRegModel(nn.Module):
-    def __init__(self, num_features):
+    def __init__(self, num_features, num_hidden_units=50, nn_dropout=.5):
         super(LogRegModel, self).__init__()
-        self.linear = nn.Linear(num_features, 1)
+        self.linear1 = nn.Linear(num_features, num_hidden_units)
+        self.linear2 = nn.Linear(num_hidden_units, 1)
+        self.buzzer = nn.Sequential(self.linear1, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
 
     def forward(self, x):
-        y_pred = torch.sigmoid(self.linear(x))
+        y_pred = torch.sigmoid(self.buzzer(x))
         return y_pred
-
-    def predict(self, x, threshhold=0.5):
-        return threshhold < torch.sigmoid(self.linear(x))
 
     def evaluate(self, data):
         """
@@ -122,14 +131,14 @@ class LogRegAgent():
 
         self.learnrate = learnrate
         self.vocab = vocab
-        self.data = None
+        self.train_data_loader = None
         self.criterion = nn.BCELoss()
 
 
     def load_data(self, buzzer_data_file, batch=1):
-        data = GuessDataset(vocab)
+        data = GuessDataset(self.vocab)
         data.initialize(buzzer_data_file)
-        self.data = DataLoader(dataset=data,
+        self.train_data_loader = DataLoader(dataset=data,
                               batch_size=batch,
                               shuffle=True,
                               num_workers=0)
@@ -141,7 +150,17 @@ class LogRegAgent():
         loss.backward()
         self.optimizer.step()
 
-    # Save model and its associated metadata 
+    # Train the model 
+    def train(self, num_epochs, model, save_loc):
+        # Iterations
+        for epoch in range(num_epochs):
+            for ex, (inputs, labels) in enumerate(self.train_data_loader):
+                self.step(epoch, ex, model, inputs, labels)
+
+        if (save_loc):
+            self.save_model({"epochs":num_epochs}, save_loc)
+
+    # Save the model and its associated metadata 
     def save_model(self, metadata, save_location):
         pickle.dump({"model": self.model, "metadata":metadata}, open(save_location, "wb+"))
         print("Saved model to: \"" + save_location + "\"", flush=True)
@@ -154,14 +173,7 @@ class LogRegAgent():
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learnrate)
         print("Loaded model from \"" + location + "\"", flush=True)
 
-    def train(self, num_epochs, model, inputs, labels, save_loc):
-        # Iterations
-        for epoch in range(num_epochs):
-            for ex, (inputs, labels) in enumerate(self.data):
-                self.step(epoch, ex, model, inputs, labels)
-
-        if (save_loc):
-            self.save_model({"epochs":num_epochs}, save_loc)
-        # acc = model.evaluate(test)
-        # print("Accuracy: %f" % acc)
-        # torch.save(model.state_dict(), "trained_model.th")
+    def buzz(self, guess_dict, threshhold=.5):
+        data = GuessDataset(guess_dict, labeled=False)
+        y_pred = self.model.forward(data.feature)
+        return threshhold < y_pred
