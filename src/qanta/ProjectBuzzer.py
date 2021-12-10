@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def give_confidence(guess, question_text):
     count = 0
     repeated = ""
-    df = pandas.read_csv("wiki_links.csv",dtype=str)
+    df = pandas.read_csv("../wiki_links.csv",dtype=str)
     for i in df[guess]:
         if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
             repeated += i
@@ -38,8 +38,18 @@ class Sample:
         # first chunk of feature vector is one-hot encoding of answer
         answer_tensor = vocab.encode_from_indexes([guess_data["guessId"]])[0]
         x = answer_tensor.detach().to("cpu").numpy()
-        # other features added to end
+
+        # score
         x = np.append(x, guess_data["score"])
+        # diff between top 2 scores
+        x = np.append(x, guess_data["kguess_scores"][0] - guess_data["kguess_scores"][1])
+        # ave diff between 1st score and others
+        temp = [guess_data["kguess_scores"][0] - x for x in guess_data["kguess_scores"][1:]]
+        x = np.append(x, sum(temp)/len(temp))
+        # question length
+        x = np.append(x, len(guess_data["full_question"]))
+        # num links in question
+        x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"]))
 
         self.x = x
         self.y = float(guess_data["label"])
@@ -48,7 +58,7 @@ class GuessDataset(Dataset):
     def __init__(self, vocab):
         self.vocab = vocab
         # num_features = answer_space_size + num_additional_features
-        self.num_features = self.vocab.num_answers + 1
+        self.num_features = self.vocab.num_answers + 5
         self.feature = None
         self.label = None
         self.num_samples = 0
@@ -88,6 +98,9 @@ class LogRegModel(nn.Module):
     def forward(self, x):
         y_pred = torch.sigmoid(self.linear(x))
         return y_pred
+
+    def predict(self, x, threshhold=0.5):
+        return threshhold < torch.sigmoid(self.linear(x))
 
     def evaluate(self, data):
         """
