@@ -14,9 +14,6 @@ import numpy as np
 
 from transformers import BertTokenizer
 
-#from transformers import BertModel
-#from transformers import BertConfig
-
 import re
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,7 +26,9 @@ class AnswerVocab:
         self.answers = ["UNKNOWN"] + answers_list
         self.UNK_IDX = 0
         self.list_template = None
-
+ 
+    # Changes a text answer into its associated index.
+    # If the answer is not in the vocab, it makes the answer the unknown idx.
     def get_indexes(self, text_answers):
         idxs = []
         for a in text_answers:
@@ -47,6 +46,8 @@ class AnswerVocab:
 
         return idxs
 
+    # Creates a very large array for Cross Entropy Loss from id
+    # We do this dynamically to conserve memory
     def encode_from_indexes(self, idxs):
         self.list_template = [0] * (self.num_answers)
         encoded = []
@@ -77,22 +78,14 @@ class AnswerVocab:
             encoded_answers.append(v)
         return torch.LongTensor(encoded_answers)
 
-    # returns the answers closest to the vectors
+    # Transforms the ids, each with a value, into a list of text answers.
     def decode(self, ids, values):
         answ = [(self.answers[idx], values[loc], idx) for loc, idx in enumerate(ids)]
         answ.sort(reverse=True, key=lambda x: x[1])
         return answ
 
-        #answers = []
-        #for a in ids:
-            # Checking to make sure that the vector is the correct size, otherwise this doesn't make any sense
-            #if (len(a) != self.num_answers):
-            #    raise ValueError("Received invalid vector of length " + str(len(a)) + ": expected " + str(self.num_answers))
-            #max_value = max(a)
-            #answers.append(self.answers[a.tolist().index(max_value)])
-        #return answers
-
     # This has been made obselete in the WARP version of QuizBert
+    # It has been preserved for posterity
     def decode_top_n(self, ids, n):
         answers = []
         for a in ids:
@@ -108,7 +101,10 @@ class AnswerVocab:
         answers[0].sort(reverse=True, key=lambda x: x[1])
         return answers[0]
 
+#---------------------------------------------------------------------
 # creates a map of the sums of all the pages (answers) in a given file
+# Analyzes the number of questions with each answer.
+#---------------------------------------------------------------------
 def count_pages(self, file_name):
     with open(file_name) as json_data:
         page_map = {}
@@ -127,7 +123,10 @@ def count_pages(self, file_name):
 
         return page_map
 
-# Creates some insights about the data we are working with
+#------------------------------------------------------------------
+# Used early in development to analyze the data and the effects of
+# the transformers functions on our data.
+#------------------------------------------------------------------
 def analyze_dataset(filename):
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
     inputs = tokenizer.tokenize("During his reign, this man established subordinate bodies called the Triers and Ejectors to rule over clergy and teachers. Following a failed coup attempt against him led by John Lambert, he disbanded the Assembly of Saints, and\u00a0this ruler mandated that Parliament follow the \"four fundamentals.\"\u00a0His rule saw the conquering of Jamaica by the British. His government, which fought for the \"Good Old Cause,\" worked to oppress sects like the Fifth Monarchy Men. One of his greatest military campaigns concluded with the Battle of Worcester, a conflict that followed his predecessor's Bishops' Wars. This organizer of the New Model Army was succeeded by his son Richard. For 10 points, name this first Lord Protector of England.")
@@ -137,14 +136,6 @@ def analyze_dataset(filename):
 
     inputs = inputs.unsqueeze(0)
     labels = labels.unsqueeze(0)
-
-    '''
-    model = BERTTest()
-    model.train()
-    optimizer = torch.optim.Adamax(model.parameters())
-    criterion = nn.CrossEntropyLoss()
-    step(1, 1, model, optimizer, criterion, inputs, labels, vocab=[])
-    '''
 
     max_question_length = 0
     max_question = []
@@ -327,8 +318,8 @@ class Project_BERT_Data_Manager:
         self.use_bert_question_cache = False
         self.batch_size = batch_size
 
-
-    # will cache bert pooled output of question if provided with bert model
+    # loads a provided data JSON file and prepares it for model processing with many different options
+    # will cache bert pooled output of question if provided with bert model - only do this if all BERT layers are frozen!
     def load_data(self, file_name, limit, split_sentences=False, category_only=False, bert_model=None):
         with open(file_name) as json_data:
             temp_questions = []
@@ -350,7 +341,7 @@ class Project_BERT_Data_Manager:
                 else:
                     answer = q["page"]
 
-                if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions
+                if (not "answer:" in text and not "ANSWER:" in text):   # making sure that the question is not an amalgam of multiple questions - this is a very strange problem in the data
 
                     if (split_sentences):
                         sentences = split_into_sentences(text)
@@ -375,7 +366,7 @@ class Project_BERT_Data_Manager:
             self.questions = self.questions
             self.answer_indexes = self.answer_vocab.get_indexes(temp_answers) # turn all of the answers into indexes
 
-
+            # pooler output caching
             if (not bert_model == None):
                 self.use_bert_question_cache = True
                 bert_model = bert_model.to(device)
@@ -391,6 +382,7 @@ class Project_BERT_Data_Manager:
 
             print("Loaded " + str() + "", flush = True)
 
+    # Returns next question and label
     def get_next(self, encode_index=True):
         self.epoch()
         encode = lambda x : torch.LongTensor(x)
@@ -407,6 +399,8 @@ class Project_BERT_Data_Manager:
         self.current += 1
         return element
 
+    # returns a batch of questions - if the batch runs out of questions, 
+    # it will just give you the most it can and reset the epoch.
     def get_next_batch(self, encode_index=True):
         encode = lambda x : torch.LongTensor(x)
         question_representation = None
@@ -429,34 +423,39 @@ class Project_BERT_Data_Manager:
             self.batch += 1
             return batch
 
+    # Returns number of completed epochs
     def get_epochs(self):
         return self.full_epochs
 
+    # resets data manager for next epoch
     def epoch(self):
         if (self.current >= self.num_questions):
             self.full_epochs += 1
             self.batch = 0
             self.current = 0
 
+    # Resets current epoch without advancing epoch counter
     def reset_epoch(self):
         self.current = 0
         self.batch = 0
 
+    # returns percentage of data that has been traversed through
     def get_epoch_completion(self):
         return (self.batch/(self.num_questions/self.batch_size))*100
 
+    # Returns the length of the answer vector (This is no longer necessary in WARPed QuizBERT, but was needed for previous models)
     def get_answer_vector_length(self):
         print(self.answer_vocab.num_answers)
         return self.answer_vocab.num_answers
 
-    # This just returns the most recent encoded question 
+    # This just returns the most recent encoded question for buzztrain
     def get_current_info(self):
         if (self.current==0):
             raise Exeption("No recent data provided - nothing to provide info on!")
         return self.questions[self.current - 1]
 
 
-# used to test this file
+# used to test this file - please ignore this junk
 if __name__ == '__main__':
     #answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")
     
