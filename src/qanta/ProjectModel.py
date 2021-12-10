@@ -30,18 +30,18 @@ from qanta.warp_loss import *
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cuda_bool = device == "cuda" 
 
-CACHE_LOCATION = "cache"
-BERT_OUTPUT_LENGTH = 768
-HIDDEN_UNITS = 768
-DROPOUT = .2
-EMB_DIM=1000
+CACHE_LOCATION = "cache" # transformers cache
+BERT_OUTPUT_LENGTH = 768 # constant for version of BERT - 768 is # of outputs
+HIDDEN_UNITS = 768 # number of hidden neurons
+DROPOUT = .2 # dropout between linear embedding layers
+EMB_DIM=1000 # dim of final embedding vectors
 
 #=======================================================================================================
 # The actual model that is managed by pytorch - QuizBERT, excelsior!!!
 #=======================================================================================================
 class QuizBERT(nn.Module):
 
-    # Initialize the parameters you'll need for the model.
+    # Initialize the parameters we'll need for the model.
     def __init__(self, answer_vector_length, cache_dir=""):    
         super(QuizBERT, self).__init__()
 
@@ -66,7 +66,7 @@ class QuizBERT(nn.Module):
             for param in module.parameters():
                 param.requires_grad = False
 
-    # computes output vector using pooled BERT output
+    # Used exclusively for training
     def forward(self, question, pos, neg, expect_precalculated_pool=False):
 
         # allows to precalculate the BERT output for faster training
@@ -84,15 +84,19 @@ class QuizBERT(nn.Module):
 
         return pos_res, neg_res
 
+    # embedds answer
     def embed_answer(self, answer):
         return self.answers_embeds(answer)
 
+    # embeds question
     def embed_question(self, question, expect_precalculated_pool=False):
         if (expect_precalculated_pool):
             return self.question_embeds(self.drop(self.question_hidden(question)))
         else:
             return self.question_embeds(self.drop(self.question_hidden(self.bert(question).pooler_output)))
 
+    # called to select how many layers of BERT are frozen at any given time
+    # This was useful for our dynamic freezing approach to training
     def unfreeze_layers(self, layers):
         modules = [self.bert.embeddings, *self.bert.encoder.layer]
         
@@ -111,7 +115,7 @@ class QuizBERT(nn.Module):
             for param in module.parameters():
                 param.requires_grad = True
 
-    # return last pooler output vector - will be used in buzztrain
+    # return last pooler output vector - can be used in buzztrain
     def get_last_pooler_output(self):
         if (self.last_pooler_out == None):
             raise ValueError("No pooler output cached - run through a guess first!")
@@ -120,6 +124,7 @@ class QuizBERT(nn.Module):
     def load_bert_pretained_weights(self, cache):
         self.bert = self.bert
 
+    # extension of pytorch .to() function
     def to_device(self, device):
         self.bert = self.bert.to(device)
         self.answers_embeds = self.answers_embeds.to(device)
@@ -214,6 +219,7 @@ class BERTAgent():
             elif(not wants_to_save and self.saved_recently):
                 self.saved_recently=False
 
+        # uncomment this to log more specific time diagnostics
         print("Finished in " + str(time.time()-start_time) + "s")
         #print("Total rand time: " + str(self.time_map["total_rand_time"]) + "s")
         #print("Total forward time: " + str(self.time_map["total_forward_time"]) + "s")
@@ -265,12 +271,17 @@ class BERTAgent():
         else:
             raise ValueError("No model mode \"" + mode + "\" exists", flush = True)
 
+    # Prepare the embedded answers to compare against when guessing.
+    # This gets called automatically the first time an answer guess is requested
     def cache_answer_vectors(self):
         self.answer_vector_cache = None
         torch.cuda.empty_cache()
         with torch.no_grad():
             self.answer_vector_cache = self.model.embed_answer(torch.LongTensor(range(0, self.vocab.num_answers)).to(device))
 
+    # returns the K most likely answers to the questions
+    # This is able to produce metadata associated with the guess,
+    # which eventually gets passed down the pipeline to the buzzer.
     def answer_knn(self, questions, k, question_pooled=False, id_only=False):
         answers = []
 
@@ -297,6 +308,7 @@ class BERTAgent():
             return answers
 
     # will return whatever buzzer needs to create its input vector
+    # only used when running buzzer and guesser in tandem
     def model_topk(self, encoded_questions, tokenizer, k=1):
         output = []
         question = self.model.embed_question(q, expect_precalculated_pool=False)
@@ -311,13 +323,14 @@ class BERTAgent():
                         "kguess_ids" : [val[2].cpu().tolist() for val in guess],
                         "kguess_scores" : [val[1].cpu().tolist() for val in guess],
                         "question_nonzero_tokens": torch.count_nonzero(q).tolist(), 
-                        "pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
+                        #"pooler_output" : self.model.get_last_pooler_output().cpu().tolist()[0],
                         "full_question" : full_text
                     }
             output.append(meta)
         return output
 
-
+    # Runs through a full epoch of data in the data manager, evaluating the accuracy of the model.
+    # If provided a save location, will produce a buzztrain file.
     def model_evaluate(self, data_manager, save_loc=None, k=10, tokenizer=None):
         epoch = data_manager.full_epochs
         pooled_questions = data_manager.use_bert_question_cache
@@ -387,6 +400,7 @@ class BERTAgent():
                 textfile.close()
 
 
+# used to test this file - please ignore this junk
 if __name__ == '__main__':
     print("Model-only testing mode")
     MAX_QUESTION_LENGTH = 412
@@ -407,28 +421,12 @@ if __name__ == '__main__':
 
     #print(agent.model_forward(next_data[0].to(device)))
 
-    '''print(next_data[0].size())
-    print(next_data[1].size())
+    #print(next_data[0].size())
+    #print(next_data[1].size())
 
-    print(agent.model_forward(next_data[0]))
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))    
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))    
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))    
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))    
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))    
-    agent.train_step(1, next_data[0], next_data[1])
-    print(agent.model_forward(next_data[0]))
+    #print(vocab.decode(agent.model_forward(next_data[0])))
 
-    print(vocab.decode(agent.model_forward(next_data[0])))'''
-
-    agent.train_epoch(data, 1000, "training_progress")
+    #agent.train_epoch(data, 1000, "training_progress")
     #agent.save_model({}, "training_progress/test_model.model")
 
     #agent.load_model("training_progress/test_model.model")
