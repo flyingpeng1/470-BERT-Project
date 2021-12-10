@@ -455,6 +455,54 @@ class Project_BERT_Data_Manager:
         return self.questions[self.current - 1]
 
 
+
+#------------------------------------------------------------------------------
+# The only way I can actually view the questions without my computer crashing.
+#------------------------------------------------------------------------------
+class Data_Manager_Database:
+    def __init__(self, vocab, tokenizer):
+        self.managers={}
+        self.vocab = vocab
+        self.tokenizer = tokenizer
+
+    def load(self, location, name):
+        self.managers[name] = load_data_manager(location)
+
+    def command(self):
+        #try:
+            cmd = input("Enter command: ")
+            if (cmd == "load"):
+                loc = input("Enter manager location: ")
+                name = input("Enter name: ")
+                self.managers[name] = load_data_manager(loc)
+
+            elif (cmd == "lookup"):
+                name = input("Enter name: ")
+                manager = self.managers[name]
+                search = input("Enter search key: ")
+                search_idx = self.vocab.get_indexes([search])[0]
+                results = []
+
+                for order, val in enumerate(manager.answer_indexes):
+                    if (val == search_idx):
+                        results.append(self.tokenizer.decode(manager.questions[order]))
+
+                print(results)
+                print("Number of results: " + str(len(results)))
+
+            elif (cmd == "vocab"):
+                print(self.vocab.answers)
+
+            elif (cmd == "exit"):
+                return False
+
+            return True
+
+        #except:
+        #    print("Error processing command!")
+
+
+
 # used to test this file - please ignore this junk
 if __name__ == '__main__':
     #answer_vocab_generator("../data/qanta.train.2018.04.18.json", "data/qanta.vocab")

@@ -358,6 +358,19 @@ def makemanager(vocab_location, save_location, data_file, limit, category_only, 
     loader.load_data(data_file, limit, category_only=category_only, split_sentences=split_sentences, bert_model=model)
     save_data_manager(loader, DATA_MANAGER_LOCATION)
 
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--manager_file', default=DATA_MANAGER_LOCATION)
+def managerdatabase(vocab_file, manager_file):
+    vocab = load_vocab(vocab_file)
+    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
+    db = Data_Manager_Database(vocab, tokenizer)
+    db.load(manager_file, "manager")
+    run = True
+    while (run):
+        run = db.command()
+
+
 # Run to check if cuda is available.
 @cli.command()
 def cudatest():
@@ -369,6 +382,23 @@ def cudatest():
 #@click.option('--retrieve-paragraphs', default=False, is_flag=True) #retrieve_paragraphs
 def download(local_qanta_prefix):
     util.download(local_qanta_prefix, False)
+
+
+
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--buzzer_file', default=BUZZER_LOCATION)
+@click.option('--data_file', default=BUZZTRAIN_LOCATION)
+@click.option('--data_limit', default=-1)
+@click.option('--num_epochs', default=10)
+def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs): 
+    vocab = load_vocab(vocab_file)
+    data = GuessDataset(vocab)
+    data.initialize(open(data_file))
+
+    model = LogRegModel(len(data[0][0]))
+    agent = LogRegAgent(model, vocab)
+    agent.train(num_epochs, model, None, None, buzzer_file)
 
 
 if __name__ == '__main__':
