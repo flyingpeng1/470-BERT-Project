@@ -30,6 +30,7 @@ TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
 TEST_FILE_LOCATION = "/src/data/qanta.test.2018.04.18.json"
 TRAINING_PROGRESS_LOCATION = "training_progress"
 BUZZTRAIN_LOCATION = "/src/data/buzztrain.json"
+LINK_FILE_LOCATION = "/src/data/wiki_links.csv"
 
 LOCAL_CACHE_LOCATION = "cache"
 LOCAL_VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
@@ -384,16 +385,17 @@ def download(local_qanta_prefix):
     util.download(local_qanta_prefix, False)
 
 
-
+#/src/data/wiki_links.csv
 @cli.command()
 @click.option('--vocab_file', default=VOCAB_LOCATION)
 @click.option('--buzzer_file', default=BUZZER_LOCATION)
 @click.option('--data_file', default=BUZZTRAIN_LOCATION)
 @click.option('--data_limit', default=-1)
 @click.option('--num_epochs', default=10)
-def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs): 
+@click.option('--link_file', default=LINK_FILE_LOCATION)
+def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file): 
     vocab = load_vocab(vocab_file)
-    data = GuessDataset(vocab)
+    data = GuessDataset(vocab, link_file)
     data.initialize(open(data_file))
 
     model = LogRegModel(len(data[0][0]))

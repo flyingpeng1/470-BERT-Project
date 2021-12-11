@@ -13,10 +13,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #=======================================================================================================
 # Util
 #=======================================================================================================
-def give_confidence(guess, question_text):
+def give_confidence(guess, question_text, file_location):
     count = 0
     repeated = ""
-    df = pandas.read_csv("../wiki_links.csv",dtype=str)
+    df = pandas.read_csv(file_location,dtype=str)
     for i in df[guess]:
         if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
             repeated += i
@@ -27,7 +27,7 @@ def give_confidence(guess, question_text):
 # Data Classes
 #=======================================================================================================
 class Sample:
-    def __init__(self, guess_data, vocab, labeled=True):
+    def __init__(self, guess_data, vocab, link_file_location, labeled=True):
         """
         Create a new example
 
@@ -53,20 +53,21 @@ class Sample:
         # question length
         x = np.append(x, guess_data["question_nonzero_tokens"]/412)
         # num links in question
-        x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"]))
+        x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"], file_location))
 
         self.x = x
         if labeled:
             self.y = float(guess_data["label"])
 
 class GuessDataset(Dataset):
-    def __init__(self, vocab):
+    def __init__(self, vocab, link_file_location):
         self.vocab = vocab
         # Add number of additional features to size of vocab to get total num features
         self.num_features = self.vocab.num_answers + 5
         self.feature = None
         self.label = None
         self.num_samples = 0
+        self.link_file_location = link_file_location
 
     def initialize(self, buzzer_data, is_file=True, labeled=True):
         dataset = []
@@ -76,7 +77,7 @@ class GuessDataset(Dataset):
             data = buzzer_data
 
         for guess_data in data["buzzer_data"]:
-            ex = Sample(guess_data, self.vocab, labeled=labeled)
+            ex = Sample(guess_data, self.vocab, self.link_file_location, labeled=labeled)
             dataset.append(ex)
             self.num_samples += 1
 
@@ -122,7 +123,7 @@ class LogRegModel(nn.Module):
             return acc
 
 class LogRegAgent():
-    def __init__(self, model, vocab, learnrate=0.01):
+    def __init__(self, model, vocab, link_file, learnrate=0.01):
         if (model):
             self.model = model.to(device)
             self.optimizer = torch.optim.SGD(model.parameters(), lr=learnrate)
@@ -133,10 +134,11 @@ class LogRegAgent():
         self.vocab = vocab
         self.train_data_loader = None
         self.criterion = nn.BCELoss()
+        self.link_file = link_file
 
 
     def load_data(self, buzzer_data_file, batch=1):
-        data = GuessDataset(self.vocab)
+        data = GuessDataset(self.vocab, self.link_file)
         data.initialize(buzzer_data_file)
         self.train_data_loader = DataLoader(dataset=data,
                               batch_size=batch,
@@ -174,7 +176,7 @@ class LogRegAgent():
         print("Loaded model from \"" + location + "\"", flush=True)
 
     def buzz(self, guess_dict, threshhold=.5):
-        data = GuessDataset(self.vocab)
+        data = GuessDataset(self.vocab, self.link_file)
         data.load(guess_dict, file=False, labeled=False)
         y_pred = self.model.forward(data.feature)
         return threshhold < y_pred

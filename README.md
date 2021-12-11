@@ -125,13 +125,29 @@ sudo docker-compose run -d --name trainer bert_qb ./cli train --epochs 30 --save
 
 sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
 
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 200
+python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 200 --unfreeze_layers 11+12+13
 
-sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
-
-
-python -m qanta.ProjectServer evaluate --data_file ../data/qanta.train.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --dobuzztrain --buzztrainfile ../data/buzztrain.json
+sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model 
 
 
+python -m qanta.ProjectServer evaluate --data_file ../data/qanta.test.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --dobuzztrain --buzztrainfile ../data/buzztrain.json
 
---unfreeze_layers 11+12+13
+
+python -m qanta.ProjectServer managerdatabase --vocab_file ../data/QuizBERT.vocab --manager_file ../data/QBERT_Data.manager
+
+--unfreeze_layers 9+10+11+12
+
+
+
+sudo docker-compose run -d --name evaluator bert_qb ./cli evaluate --dobuzztrain --preloaded_manager --manager_file /src/data/QuizBERTSplitData.manager
+
+
+
+sudo docker-compose run -d --name managerbuilder bert_qb ./cli makemanager  --split_sentences --save_location /src/data/QuizBERTSplitData.manager
+
+
+python -m qanta.ProjectServer buzztrain --vocab_file ../data/QuizBERT.vocab --buzzer_file ../data/QuizBERTBuzzer.model --data_file ../data/buzztrain.json
+
+
+
+sudo docker-compose run -d --name buzztrain bert_qb ./cli buzztrain
