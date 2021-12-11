@@ -401,7 +401,7 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
 
     print("Training model", flush=True)
     model = LogRegModel(len(data[0][0]))
-    agent = LogRegAgent(model, vocab)
+    agent = LogRegAgent(model, vocab, link_file)
     agent.train(num_epochs, model, None, None, buzzer_file)
 
 
