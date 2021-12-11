@@ -117,7 +117,7 @@ class LogRegModel(nn.Module):
         Computes the accuracy of the model. 
         """
         with torch.no_grad():
-            y_predicted = self(data.feature)
+            y_predicted = self(data.feature.to(device))
             y_predicted_cls = y_predicted.round()
             acc = y_predicted_cls.eq(data.label).sum() / float(data.label.shape[0])
             return acc
