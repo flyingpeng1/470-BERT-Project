@@ -104,9 +104,9 @@ class GuessDataset(Dataset):
 class LogRegModel(nn.Module):
     def __init__(self, num_features, num_hidden_units=50, nn_dropout=.5):
         super(LogRegModel, self).__init__()
-        self.linear1 = nn.Linear(num_features, 1)#num_hidden_units)
-        #self.linear2 = nn.Linear(num_hidden_units, 1)
-        self.buzzer = nn.Sequential(self.linear1)#, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
+        self.linear1 = nn.Linear(num_features, num_hidden_units)
+        self.linear2 = nn.Linear(num_hidden_units, 1)
+        self.buzzer = nn.Sequential(self.linear1, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
 
     def forward(self, x):
         y_pred = torch.sigmoid(self.buzzer(x))
@@ -119,7 +119,7 @@ class LogRegModel(nn.Module):
         with torch.no_grad():
             y_predicted = self(data.feature.to(device))
             y_predicted_cls = y_predicted.round()
-            acc = y_predicted_cls.eq((data.label).sum() / float(data.label.shape[0]).to(device))
+            acc = y_predicted_cls.eq(torch.FloatTensor((data.label).sum() / float(data.label.shape[0])).to(device))
             return acc
 
 class LogRegAgent():
