@@ -158,7 +158,7 @@ class LogRegAgent():
         # Iterations
         for epoch in range(num_epochs):
             print("epoch " + str(epoch), flush=True)
-            print(evaluate(self.data))
+            print(model.evaluate(self.data))
             for ex, (inputs, labels) in enumerate(self.train_data_loader):
                 self.step(epoch, ex, model, inputs, labels)
                 if (ex % 5000 == 0):
