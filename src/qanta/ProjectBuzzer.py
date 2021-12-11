@@ -40,8 +40,8 @@ class Sample:
 
         # FEATURES
         # first chunk of feature vector is one-hot encoding of answer
-        answer_tensor = vocab.encode_from_indexes([guess_data["guessId"]])[0]
-        x = answer_tensor.detach().to("cpu").numpy()
+        #answer_tensor = vocab.encode_from_indexes([guess_data["guessId"]])[0]
+        x = torch.FloatTensor().numpy()#answer_tensor.detach().to("cpu").numpy()
 
         # score
         x = np.append(x, guess_data["score"])

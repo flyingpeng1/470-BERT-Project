@@ -396,8 +396,10 @@ def download(local_qanta_prefix):
 def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file): 
     vocab = load_vocab(vocab_file)
     data = GuessDataset(vocab, link_file)
+    print("Initializing data", flush=True)
     data.initialize(open(data_file))
 
+    print("Training model", flush=True)
     model = LogRegModel(len(data[0][0]))
     agent = LogRegAgent(model, vocab)
     agent.train(num_epochs, model, None, None, buzzer_file)
