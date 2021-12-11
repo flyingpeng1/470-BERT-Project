@@ -148,7 +148,7 @@ class LogRegAgent():
 
     def step(self, epoch, ex, model, inputs, labels):
         self.optimizer.zero_grad()
-        predictions = model(inputs.to(device))
+        predictions = self.model(inputs.to(device))
         loss = self.criterion(predictions, labels.to(device))
         loss.backward()
         self.optimizer.step()
@@ -158,9 +158,9 @@ class LogRegAgent():
         # Iterations
         for epoch in range(num_epochs):
             print("epoch " + str(epoch), flush=True)
-            print(model.evaluate(self.data), flush=True)
+            print(self.model.evaluate(self.data), flush=True)
             for ex, (inputs, labels) in enumerate(self.train_data_loader):
-                self.step(epoch, ex, model, inputs, labels)
+                self.step(epoch, ex, self.model, inputs, labels)
                 if (ex % 5000 == 0):
                     print("%"+str((ex/len(self.train_data_loader))*100), flush=True)
 
