@@ -119,7 +119,7 @@ class LogRegModel(nn.Module):
         with torch.no_grad():
             y_predicted = self(data.feature.to(device))
             y_predicted_cls = y_predicted.round()
-            acc = torch.cont_nonzero(y_predicted_cls.eq(torch.FloatTensor((data.label).sum() / float(data.label.shape[0])).to(device)))/574769
+            acc = torch.count_nonzero(y_predicted_cls.eq(torch.FloatTensor((data.label).sum() / float(data.label.shape[0])).to(device)))/574769
             return acc
 
 class LogRegAgent():
