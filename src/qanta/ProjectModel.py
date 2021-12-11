@@ -93,7 +93,8 @@ class QuizBERT(nn.Module):
         if (expect_precalculated_pool):
             return self.question_embeds(self.drop(self.question_hidden(question)))
         else:
-            return self.question_embeds(self.drop(self.question_hidden(self.bert(question).pooler_output)))
+            bert = self.bert(question).pooler_output
+            return self.question_embeds(self.drop(self.question_hidden(bert)))
 
     # called to select how many layers of BERT are frozen at any given time
     # This was useful for our dynamic freezing approach to training
@@ -289,7 +290,7 @@ class BERTAgent():
             print("Must cache answer vectors before calculating KNN", flush=True)
             print("Caching answer vectors...", flush=True)
             self.cache_answer_vectors()
-            print("Finished answer caching.. commnece accuracy evaluation.", flush=True)
+            print("Finished answer caching.. commence evaluation.", flush=True)
 
         with torch.no_grad():
             qs = self.model.embed_question(questions, expect_precalculated_pool=question_pooled)
@@ -311,9 +312,9 @@ class BERTAgent():
     # only used when running buzzer and guesser in tandem
     def model_topk(self, encoded_questions, tokenizer, k=1):
         output = []
-        question = self.model.embed_question(q, expect_precalculated_pool=False)
+        #questions = self.model.embed_question(encoded_questions, expect_precalculated_pool=False)
         for q in encoded_questions:
-            guess = answer_knn(q.unsqueeze(0), k)
+            guess = self.answer_knn(q.unsqueeze(0), k)[0]
             full_text = tokenizer.decode(q)
             meta = {
                         "guess" : guess[0][0],
@@ -327,7 +328,7 @@ class BERTAgent():
                         "full_question" : full_text
                     }
             output.append(meta)
-        return output
+        return {"buzzer_data":output}
 
     # Runs through a full epoch of data in the data manager, evaluating the accuracy of the model.
     # If provided a save location, will produce a buzztrain file.

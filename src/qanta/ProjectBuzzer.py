@@ -104,9 +104,9 @@ class GuessDataset(Dataset):
 class LogRegModel(nn.Module):
     def __init__(self, num_features, num_hidden_units=50, nn_dropout=.5):
         super(LogRegModel, self).__init__()
-        self.linear1 = nn.Linear(num_features, num_hidden_units)
-        self.linear2 = nn.Linear(num_hidden_units, 1)
-        self.buzzer = nn.Sequential(self.linear1, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
+        self.linear1 = nn.Linear(num_features, 1)#num_hidden_units)
+        #self.linear2 = nn.Linear(num_hidden_units, 1)
+        self.buzzer = nn.Sequential(self.linear1)#, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
 
     def forward(self, x):
         y_pred = torch.sigmoid(self.buzzer(x))
@@ -123,7 +123,7 @@ class LogRegModel(nn.Module):
             return acc
 
 class LogRegAgent():
-    def __init__(self, model, vocab, link_file, learnrate=0.01):
+    def __init__(self, model, vocab, link_file="../wiki_links.csv", learnrate=0.01):
         if (model):
             self.model = model.to(device)
             self.optimizer = torch.optim.SGD(model.parameters(), lr=learnrate)
@@ -140,6 +140,7 @@ class LogRegAgent():
     def load_data(self, buzzer_data_file, batch=1):
         data = GuessDataset(self.vocab, self.link_file)
         data.initialize(buzzer_data_file)
+        self.data = data
         self.train_data_loader = DataLoader(dataset=data,
                               batch_size=batch,
                               shuffle=True,
@@ -157,6 +158,7 @@ class LogRegAgent():
         # Iterations
         for epoch in range(num_epochs):
             print("epoch " + str(epoch), flush=True)
+            print(evaluate(self.data))
             for ex, (inputs, labels) in enumerate(self.train_data_loader):
                 self.step(epoch, ex, model, inputs, labels)
                 if (ex % 5000 == 0):
@@ -180,6 +182,6 @@ class LogRegAgent():
 
     def buzz(self, guess_dict, threshhold=.5):
         data = GuessDataset(self.vocab, self.link_file)
-        data.load(guess_dict, file=False, labeled=False)
-        y_pred = self.model.forward(data.feature)
-        return threshhold < y_pred
+        data.initialize(guess_dict, is_file=False, labeled=False)
+        y_pred = self.model.forward(data.feature.to(device))
+        return y_pred
