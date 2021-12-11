@@ -53,7 +53,7 @@ class Sample:
         # question length
         x = np.append(x, guess_data["question_nonzero_tokens"]/412)
         # num links in question
-        x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"], file_location))
+        x = np.append(x, give_confidence(guess_data["guess"], guess_data["full_question"], link_file_location))
 
         self.x = x
         if labeled:
