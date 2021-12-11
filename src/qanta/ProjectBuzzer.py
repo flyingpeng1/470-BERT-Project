@@ -174,6 +174,7 @@ class LogRegAgent():
         print("Loaded model from \"" + location + "\"", flush=True)
 
     def buzz(self, guess_dict, threshhold=.5):
-        data = GuessDataset(guess_dict, labeled=False)
+        data = GuessDataset(self.vocab)
+        data.load(guess_dict, file=False, labeled=False)
         y_pred = self.model.forward(data.feature)
         return threshhold < y_pred
