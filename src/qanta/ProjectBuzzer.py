@@ -160,7 +160,7 @@ class LogRegAgent():
             for ex, (inputs, labels) in enumerate(self.train_data_loader):
                 self.step(epoch, ex, model, inputs, labels)
                 if (ex % 5000 == 0):
-                    print("%"+str(ex/len(self.train_data_loader)), flush=True)
+                    print("%"+str((ex/len(self.train_data_loader))*100), flush=True)
 
         if (save_loc):
             self.save_model({"epochs":num_epochs}, save_loc)

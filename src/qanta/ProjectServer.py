@@ -393,7 +393,8 @@ def download(local_qanta_prefix):
 @click.option('--data_limit', default=-1)
 @click.option('--num_epochs', default=10)
 @click.option('--link_file', default=LINK_FILE_LOCATION)
-def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file): 
+@click.option('--batch_size', default=1)
+def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file, batch_size): 
     vocab = load_vocab(vocab_file)
     data = GuessDataset(vocab, link_file)
     print("Initializing data", flush=True)
@@ -402,7 +403,7 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
     print("Training model", flush=True)
     model = LogRegModel(len(data[0][0]))
     agent = LogRegAgent(model, vocab, link_file)
-    agent.load_data(open(data_file), batch=10)
+    agent.load_data(open(data_file), batch=batch_size)
     agent.train(num_epochs, model, buzzer_file)
 
 
