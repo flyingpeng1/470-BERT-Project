@@ -1,0 +1,396 @@
+INFO: Using base environemnt
+CUDA is available
+Starting QB
+Initializing data
+Training model
+epoch 0
+%0.0
+Loss = tensor(0.6743, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.3123, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.3577, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3942, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.3513, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.5217, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.1587, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.2952, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.6178, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.1847, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.5170, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.2420, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8753, device='cuda:0')
+epoch 1
+%0.0
+Loss = tensor(0.2825, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.2670, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.7393, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3957, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.2474, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2350, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.0907, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.3045, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.3644, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.4101, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2138, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.0843, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8832, device='cuda:0')
+epoch 2
+%0.0
+Loss = tensor(0.1006, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.3411, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.0729, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.6124, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.3781, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.0770, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.2119, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.2059, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.2793, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.2740, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.1409, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.0707, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8824, device='cuda:0')
+epoch 3
+%0.0
+Loss = tensor(0.1446, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.1305, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.5123, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.2303, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1549, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.4067, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.1564, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.0820, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.0706, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.2415, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2152, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.2028, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8874, device='cuda:0')
+epoch 4
+%0.0
+Loss = tensor(0.5468, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.1811, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.0782, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.5164, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.2406, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2054, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.3273, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.1021, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.3925, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.5839, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.1929, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.3222, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8867, device='cuda:0')
+epoch 5
+%0.0
+Loss = tensor(0.1510, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.1246, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.1836, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.1238, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1145, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.1087, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.0333, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.2021, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.1032, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.2332, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.4889, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.0548, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8872, device='cuda:0')
+epoch 6
+%0.0
+Loss = tensor(0.4120, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.1680, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.9861, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3726, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.0952, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.1531, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.0535, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.4659, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.0975, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.2646, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.4192, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.2768, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8870, device='cuda:0')
+epoch 7
+%0.0
+Loss = tensor(0.2208, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.0978, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.5810, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.7430, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.2877, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.1956, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.2060, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.1529, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.1425, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.4290, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.1078, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.0944, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8891, device='cuda:0')
+epoch 8
+%0.0
+Loss = tensor(0.0352, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.5682, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.2760, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.0403, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1223, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.4492, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.2745, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.3439, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.7991, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.4223, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.3063, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.4236, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8886, device='cuda:0')
+epoch 9
+%0.0
+Loss = tensor(0.1732, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.3702, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.6784, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.4074, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.0993, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2024, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.2593, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.3581, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.1328, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.5457, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2471, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.2811, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8891, device='cuda:0')
+epoch 10
+%0.0
+Loss = tensor(0.3221, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.3008, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.2724, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3143, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1265, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.3081, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.1708, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.0991, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.1376, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.2436, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.4254, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.0733, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8884, device='cuda:0')
+epoch 11
+%0.0
+Loss = tensor(0.1302, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.2392, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.1976, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3461, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1621, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2675, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.2952, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.6205, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.3545, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.5566, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2810, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.3687, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8887, device='cuda:0')
+epoch 12
+%0.0
+Loss = tensor(0.2664, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.2320, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.1436, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.3480, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.2372, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2881, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.3039, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.3411, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.4277, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.5874, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2543, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.2006, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8887, device='cuda:0')
+epoch 13
+%0.0
+Loss = tensor(0.1048, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.0401, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(1.0515, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.1191, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.0848, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.2822, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.1567, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.3269, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.1283, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.0891, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.2960, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.7656, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8888, device='cuda:0')
+epoch 14
+%0.0
+Loss = tensor(0.1023, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%8.6991318266437
+Loss = tensor(0.1380, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%17.3982636532874
+Loss = tensor(0.4060, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%26.0973954799311
+Loss = tensor(0.1412, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%34.7965273065748
+Loss = tensor(0.1623, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%43.4956591332185
+Loss = tensor(0.0934, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%52.1947909598622
+Loss = tensor(0.0967, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%60.893922786505904
+Loss = tensor(0.4945, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%69.5930546131496
+Loss = tensor(0.2860, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%78.29218643979331
+Loss = tensor(0.1133, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%86.991318266437
+Loss = tensor(0.0695, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+%95.69045009308071
+Loss = tensor(0.3613, device='cuda:0', grad_fn=<BinaryCrossEntropyBackward0>)
+Accuracy: tensor(0.8888, device='cuda:0')
+Saved model to: "/src/data/QuizBERTBuzzer.model"

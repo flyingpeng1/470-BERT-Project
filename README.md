@@ -62,6 +62,15 @@ run the model to answer questions and buzz
   `--host`
   `--port`
 
+run the model with a built-in fast evaluator that provides diagnostics
+`playquizbowl`
+  `--vocab_file`
+  `--model_file`
+  `--buzzer_file`
+  `--link_file`
+  `--data_file`
+  `--save_loc`
+
 download the qanta data
 `download` 
 
@@ -129,6 +138,17 @@ training the buzzer
   `--num_epochs`
   `--link_file`
   `--batch_size`
+
+evaluating the buzzer
+`buzzeval`
+  `--vocab_file`
+  `--buzzer_file`
+  `--data_file`
+  `--data_limit`
+  `--num_epochs`
+  `--link_file`
+  `--batch_size`
+
 
 will check if CUDA is available
 `cudatest`
