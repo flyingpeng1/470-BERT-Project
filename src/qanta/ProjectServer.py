@@ -253,6 +253,8 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
     truly_incorrect = []
     truly_answer_refused = []
 
+    q_len = len(data)
+
     num_questions=0
     num_guessed_correct=0
     num_buzzed_correct=0
@@ -290,10 +292,13 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
         if (possible):
             num_possible+=1
 
+        if (num_questions % 2000):
+            print("Completed: " + str(100*(num_questions/q_len)) + "%", flush=True)
+
 
     textfile = open(save_loc, "w")
     json_dict = {
-            "num_questions":0, 
+            "num_questions":num_questions, 
             "num_corrrect":num_correct, 
             "num_truly_incorrrect":num_truly_incorrrect, 
             "num_guessed_correct":num_guessed_correct,
