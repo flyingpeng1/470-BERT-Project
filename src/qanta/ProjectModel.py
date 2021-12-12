@@ -339,6 +339,7 @@ class BERTAgent():
         acc=0.0
         num_batches = 0.0
         guess_metadata = []
+        num_correct = 0
 
         # must go one at a time when recording pooler output
         if (not save_loc==None):
@@ -368,6 +369,9 @@ class BERTAgent():
                     #print("guess: ", flush=True)
                     #print(guess[0][2].cpu().tolist(), flush=True)
                     correct = (labels[0].tolist() == guess[0][2].cpu().tolist())
+
+                    if (correct):
+                        num_correct+=1
 
                     full_text = None
                     if (not tokenizer == None):
@@ -402,6 +406,7 @@ class BERTAgent():
                         }
                 json.dump(json_dict, textfile)
                 textfile.close()
+                print(str(num_correct), flush=True)
 
 
 # used to test this file - please ignore this junk
