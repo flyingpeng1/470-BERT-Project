@@ -292,7 +292,7 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
         if (possible):
             num_possible+=1
 
-        if (num_questions % 2000):
+        if (num_questions % 2000 == 0):
             print("Completed: " + str(100*(num_questions/q_len)) + "%", flush=True)
 
 
