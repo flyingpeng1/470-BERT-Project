@@ -55,16 +55,18 @@ def get_eval_only_bert_model(cache_location):
 def guess_and_buzz(guesser, buzzer, text):
     output = guesser.guess(text)
     buzz = buzzer.buzz(output)
-    return (out["guess"], buzz)
+    return (output["buzzer_data"][0]["guess"], buzz.cpu().tolist()[0][0]>0.5, output["buzzer_data"][0]["kguess"],  output["buzzer_data"][0]["kguess_scores"], buzz.cpu().tolist()[0][0])
 
 #=======================================================================================================
 # Combines batch guesser and buzzer outputs
 #=======================================================================================================
 def batch_guess_and_buzz(guesser, buzzer, text):
     out = guesser.batch_guess(text)
-    guesses = [g["guess"] for g in out]
-    buzzes = buzzer.batch_buzz(out)
-    return zip(guesses, buzzes)
+    guesses = [g["guess"] for g in out["buzzer_data"]]
+    kguess = [g["kguess"] for g in out["buzzer_data"]]
+    kguess_scores = [g["kguess_scores"] for g in out["buzzer_data"]]
+    buzzes = buzzer.buzz(out)
+    return zip(guesses, buzzes, kguess, kguess_scores)
 
 #=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
@@ -83,10 +85,10 @@ def load_model(callback, vocab_file, model_file):
 #=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
 #=======================================================================================================
-def load_buzzer(callback, vocab_file, buzzer_file):
+def load_buzzer(callback, vocab_file, buzzer_file, link_file):
     vocab = load_vocab(vocab_file)
 
-    agent = LogRegAgent(None, vocab)
+    agent = LogRegAgent(None, vocab, link_file=link_file)
     agent.load_model(buzzer_file)
     agent.model.eval()
     
@@ -112,9 +114,7 @@ class Project_Guesser():
         # Tokenize question
         encoded_question = torch.LongTensor([encode_question(text, self.tokenizer, MAX_QUESTION_LENGTH)]).to(device)
 
-        #print(encoded_question)
-
-        output = self.agent.model_topk(encoded_question)
+        output = self.agent.model_topk(encoded_question, self.tokenizer, k=5)
 
         #print(self.agent.vocab.decode_top_n(output.cpu(), 10))
         #print(self.agent.model.get_last_pooler_output())
@@ -128,8 +128,8 @@ class Project_Guesser():
 
         # Tokenize questions
         encoded_questions = torch.LongTensor([encode_question(t, self.tokenizer, MAX_QUESTION_LENGTH) for t in text]).to(device)
-        
-        output = self.agent.model_topk(encoded_questions)
+
+        output = self.agent.model_topk(encoded_question, self.tokenizer, k=5)
 
         return output
 
@@ -145,11 +145,11 @@ class Project_Guesser():
         print("Model is loaded!", flush=True)
 
 class Project_Buzzer():
-    def __init__(self, buzzer_file, vocab_file):
+    def __init__(self, buzzer_file, vocab_file, links_file):
         self.agent = None
         self.tokenizer = None
         self.ready = False
-        self.load_thread = threading.Thread(target=load_buzzer, args=[self.load_callback, vocab_file, buzzer_file])
+        self.load_thread = threading.Thread(target=load_buzzer, args=[self.load_callback, vocab_file, buzzer_file, links_file])
         self.load_thread.start()
 
     def load_callback(self, agent):
@@ -157,35 +157,38 @@ class Project_Buzzer():
         self.ready = True
         print("Buzzer is loaded!", flush=True)
 
-    # Will return buzz in future
+    # Uses buzzer
     def buzz(self, guesser_output):
-        return ([False])[0]
+        return self.agent.buzz(guesser_output)
 
-    # Will return buzz in future
+    # Uses buzzer in batch
     def batch_buzz(self, guesser_output):
-        return [False for g in guesser_output]
+        return [self.agent.buzz(guesser_output)]
+
+    def isReady(self):
+        return self.ready
 
 
 #=======================================================================================================
 # Called to start qb server.
 #=======================================================================================================
-def create_app(vocab_file, model_file, buzzer_file):
+def create_app(vocab_file, model_file, buzzer_file, links_file):
     guesser = Project_Guesser(vocab_file, model_file)
-    buzzer = Project_Buzzer(buzzer_file)
+    buzzer = Project_Buzzer(buzzer_file, vocab_file, links_file)
     app = Flask(__name__)
 
     @app.route('/api/1.0/quizbowl/act', methods=['POST'])
     def act():
         question = request.json['text']
-        guess, buzz = guess_and_buzz(guesser, buzzer, question)
-        return jsonify({'guess': guess, 'buzz': True if buzz else False})
+        guess, buzz, kguess, kguess_scores, confidence = guess_and_buzz(guesser, buzzer, question)
+        return jsonify({'guess': guess, 'buzz': True if buzz else False, 'kguess':kguess, 'kguess_scores':kguess_scores, "confidence":confidence})
 
     @app.route('/api/1.0/quizbowl/status', methods=['GET'])
     def status():
         print(guesser.isReady() and buzzer.isReady())
         return jsonify({
-            'batch': True,
-            'batch_size': 10,
+            'batch': False,
+            'batch_size': 1,
             'ready': guesser.isReady() and buzzer.isReady(),
             'include_wiki_paragraphs': False
         })
@@ -194,8 +197,8 @@ def create_app(vocab_file, model_file, buzzer_file):
     def batch_act():
         questions = [q['text'] for q in request.json['questions']]
         return jsonify([
-            {'guess': guess, 'buzz': buzz}
-            for guess, buzz in batch_guess_and_buzz(guesser, buzzer, questions)
+            {'guess': guess, 'buzz': buzz, 'kguess':kguess, 'kguess_scores':kguess_scores}
+            for guess, buzz, kguess, kguess_scores in batch_guess_and_buzz(guesser, buzzer, questions)
         ])
 
     return app
@@ -216,8 +219,9 @@ def cli():
 @click.option('--vocab_file', default=VOCAB_LOCATION)
 @click.option('--model_file', default=MODEL_LOCATION)
 @click.option('--buzzer_file', default=BUZZER_LOCATION)
-def web(host, port, vocab_file, model_file, buzzer_file):    
-    app = create_app(vocab_file, model_file, buzzer_file)
+@click.option('--link_file', default=LINK_FILE_LOCATION)
+def web(host, port, vocab_file, model_file, buzzer_file, link_file):    
+    app = create_app(vocab_file, model_file, buzzer_file, link_file)
     print("Starting web app")
     app.run(host=host, port=port, debug=True)
 
@@ -235,7 +239,6 @@ def web(host, port, vocab_file, model_file, buzzer_file):
 @click.option('--category_only', default=False, is_flag=True)
 @click.option('--eval_freq', default=0)
 @click.option('--unfreeze_layers', default="13") # num layers to unfreeze, seperated by +
-
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only, eval_freq, unfreeze_layers):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)

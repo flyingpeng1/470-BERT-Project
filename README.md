@@ -151,3 +151,6 @@ python -m qanta.ProjectServer buzztrain --vocab_file ../data/QuizBERT.vocab --bu
 
 
 sudo docker-compose run -d --name buzztrain bert_qb ./cli buzztrain
+
+
+python -m qanta.ProjectServer web --vocab_file ../data/QuizBERT.vocab --model_file ../data/QuizBERT.model --buzzer_file ../data/QuizBERTBuzzer.model --link_file ../wiki_links.csv
