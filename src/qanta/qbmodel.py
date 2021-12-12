@@ -28,4 +28,8 @@ class QuizBowlModel:
             guess, buzz, kguess, kguess_scores, confidence = guess_and_buzz(self.guesser, self.buzzer, question)
             results.append((guess, buzz))
 
-        return results
+        return list(reversed(results))
+
+if __name__ == '__main__':
+    model = QuizBowlModel()
+    print(model.guess_and_buzz(["This is question text!", "So is this!"]))
