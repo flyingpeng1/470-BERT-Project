@@ -88,6 +88,7 @@ class BuzzAgent():
 
     def load_data(self, guess_dataset, batch_size=1):
         data = GuessDataset(guess_dataset)
+        self.dataset = guess_dataset
         self.data_loader = DataLoader(dataset=data,
                               batch_size=batch_size,
                               shuffle=True,
@@ -111,6 +112,8 @@ class BuzzAgent():
                 if (ex % 5000 == 0) and output:
                     print("%"+str((ex/len(self.data_loader))*100), flush=True)
                     print("Loss =", loss)
+
+            print("Accuracy: " + str(self.evaluate(self.dataset)))
 
         if (save_loc):
             self.save_model({"epochs":num_epochs}, save_loc)
