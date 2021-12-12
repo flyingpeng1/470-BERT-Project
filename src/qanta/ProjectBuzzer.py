@@ -75,13 +75,6 @@ class BuzzModel(nn.Module):
         y_pred = torch.sigmoid(self.buzzer(x))
         return y_pred
 
-    def evaluate(self, data):
-        with torch.no_grad():
-            y_pred = self(data.feature)
-            y_pred_cls = y_pred.round()
-            acc = y_pred_cls.eq(data.label).sum() / float(data.label.shape[0])
-            return acc
-
 class BuzzAgent():
     def __init__(self, model, learnrate=0.01):
         if (model):
@@ -104,11 +97,10 @@ class BuzzAgent():
         with open(guess_dataset_file) as file:
             self.load_data(json.load(file), batch_size)
 
-    # Train the model 
-    def train(self, num_epochs=100, save_loc=None):
-        # Iterations
+    def train(self, num_epochs=100, output=True, save_loc=None):
         for epoch in range(num_epochs):
-            print("epoch " + str(epoch), flush=True)
+            if output:
+                print("epoch " + str(epoch), flush=True)
             for ex, (inputs, labels) in enumerate(self.data_loader):
                 y_pred = self.model(inputs.to(device))
                 loss = self.criterion(y_pred, labels.to(device))
@@ -116,12 +108,27 @@ class BuzzAgent():
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
-                if (ex % 5000 == 0):
+                if (ex % 5000 == 0) and output:
                     print("%"+str((ex/len(self.data_loader))*100), flush=True)
                     print("Loss =", loss)
 
         if (save_loc):
             self.save_model({"epochs":num_epochs}, save_loc)
+
+    def evaluate(self, guess_dataset):
+        data = GuessDataset(guess_dataset)
+        with torch.no_grad():
+            y_pred = self.model(data.feature)
+            y_pred_cls = y_pred.round()
+            acc = y_pred_cls.eq(data.label).sum() / float(data.label.shape[0])
+            return acc
+
+    def buzz(self, guess_dataset):
+        data = GuessDataset(guess_dataset)
+        with torch.no_grad():
+            y_pred = self.model(data.feature)
+            y_pred_cls = y_pred.round()
+            return y_pred_cls.bool()
 
     # Save the model and its associated metadata 
     def save_model(self, metadata, save_location):
@@ -136,11 +143,6 @@ class BuzzAgent():
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learnrate)
         print("Loaded model from \"" + location + "\"", flush=True)
 
-    def buzz(self, guess_dataset, threshhold=.5):
-        data = GuessDataset(guess_dataset)
-        y_pred = self.model(data.feature)
-        return [threshhold < y for y in y_pred]
-
 
 if __name__ == '__main__':
     print("Buzzer Test")
@@ -152,9 +154,15 @@ if __name__ == '__main__':
     print("Initializing Agent...")
     agent = BuzzAgent(model)
 
-    agent.load_data_from_file("guess_dataset_sample.json")
-    agent.train()
-
     with open("guess_dataset_sample.json") as file:
         data = json.load(file)
+
+    print("Pre-train:")
     print(agent.buzz(data))
+
+    agent.load_data_from_file("guess_dataset_sample.json")
+    agent.train(output=False)
+
+    print("Post-train:")
+    print(agent.buzz(data))
+    print(agent.evaluate(data))
