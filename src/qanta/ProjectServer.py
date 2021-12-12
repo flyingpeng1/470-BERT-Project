@@ -268,7 +268,7 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
         guess, buzz, kguess, kguess_scores, confidence = guess_and_buzz(guesser, buzzer, question)
         num_questions+=1
 
-        possible = not guesser.vocab.get_indexes([answer])[0] == 0
+        possible = not guesser.agent.vocab.get_indexes([answer])[0] == 0
 
         if (guess == answer):
             num_guessed_correct+=1
