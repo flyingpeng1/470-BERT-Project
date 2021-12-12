@@ -241,7 +241,7 @@ def web(host, port, vocab_file, model_file, buzzer_file, link_file):
 @click.option('--link_file', default=LINK_FILE_LOCATION)
 @click.option('--data_file', default=TEST_FILE_LOCATION)
 @click.option('--save_loc', default=EVALUATION_FILE_LOCATION)
-def playquizbowl(host, port, vocab_file, model_file, buzzer_file, link_file, data_file, save_loc):    
+def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save_loc):    
     guesser = Project_Guesser(vocab_file, model_file)
     buzzer = Project_Buzzer(buzzer_file, vocab_file, links_file)
     
