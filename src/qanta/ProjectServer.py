@@ -292,7 +292,7 @@ def playquizbowl(host, port, vocab_file, model_file, buzzer_file, link_file, dat
 
 
     textfile = open(save_loc, "w")
-        json_dict = {
+    json_dict = {
             "num_questions":0, 
             "num_corrrect":num_corrrect, 
             "num_truly_incorrrect":num_truly_incorrrect, 
@@ -303,8 +303,8 @@ def playquizbowl(host, port, vocab_file, model_file, buzzer_file, link_file, dat
             "incorrect":truly_incorrect,
             "truly_answer_refused":truly_answer_refused
             }
-        json.dump(json_dict, textfile)
-        textfile.close()
+    json.dump(json_dict, textfile)
+    textfile.close()
 
     print("Final accuracy (Refused to buzz considered wrong): " + str((num_buzzed_correct/num_questions)*100) + "%")
     print("Final accuracy (Refused to buzz considered correct): " + str((num_guessed_correct/num_questions)*100) + "%")
