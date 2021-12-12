@@ -121,9 +121,9 @@ class BuzzAgent():
     def evaluate(self, guess_dataset):
         data = GuessDataset(guess_dataset)
         with torch.no_grad():
-            y_pred = self.model(data.feature)
+            y_pred = self.model(data.feature.to(device))
             y_pred_cls = y_pred.round()
-            acc = y_pred_cls.eq(data.label).sum() / float(data.label.shape[0])
+            acc = y_pred_cls.eq(data.label.to(device)).sum() / float(data.label.to(device).shape[0])
             return acc
 
     def buzz(self, guess_dataset):
