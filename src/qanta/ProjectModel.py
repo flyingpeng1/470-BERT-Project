@@ -364,9 +364,9 @@ class BERTAgent():
                 else:
                     guesses = self.answer_knn(gpu_inputs, k, question_pooled=pooled_questions, id_only=False)
                     guess = guesses[0]
-                    print(labels[0].tolist(), flush=True)
-                    print("guess: ", flush=True)
-                    print(guess[0][2].cpu().tolist(), flush=True)
+                    #print(labels[0].tolist(), flush=True)
+                    #print("guess: ", flush=True)
+                    #print(guess[0][2].cpu().tolist(), flush=True)
                     correct = (labels[0].tolist() == guess[0][2].cpu().tolist())
 
                     full_text = None
