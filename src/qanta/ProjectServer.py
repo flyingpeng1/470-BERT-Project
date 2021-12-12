@@ -88,7 +88,7 @@ def load_model(callback, vocab_file, model_file):
 def load_buzzer(callback, vocab_file, buzzer_file, link_file):
     vocab = load_vocab(vocab_file)
 
-    agent = BuzzAgent(None, vocab)
+    agent = BuzzAgent(None)
     agent.load_model(buzzer_file)
     agent.model.eval()
     
@@ -163,7 +163,7 @@ class Project_Buzzer():
 
     # Uses buzzer in batch
     def batch_buzz(self, guesser_output):
-        return [self.agent.buzz(guesser_output)]
+        return self.agent.buzz(guesser_output)
 
     def isReady(self):
         return self.ready
