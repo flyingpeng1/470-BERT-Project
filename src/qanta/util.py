@@ -2,6 +2,7 @@ import click
 import subprocess
 from os import path, makedirs, remove
 import zipfile
+import pandas
 
 
 DS_VERSION = '2018.04.18'
@@ -72,3 +73,14 @@ def download(local_qanta_prefix, retrieve_paragraphs=False):
 #             with zipfile.ZipFile(local_file, 'r') as zip_file:    
 #                 zip_file.extractall(local_qanta_prefix)
 #                 remove(local_file)
+
+
+def give_confidence(guess, question_text, file_location):
+    count = 0
+    repeated = ""
+    df = pandas.read_csv(file_location,dtype=str)
+    for i in df[guess]:
+        if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
+            repeated += i
+            count += 1
+    return count
