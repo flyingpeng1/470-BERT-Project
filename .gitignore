@@ -4,6 +4,8 @@
 /src/cache/*
 /src/training_progress/*
 /data/*
+!/data/QuizBERT.vocab
+!/data/QuizBERTBuzzer.model
 models/*
 *.pickle
 # Byte-compiled / optimized / DLL files

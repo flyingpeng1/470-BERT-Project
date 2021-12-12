@@ -357,7 +357,7 @@ class BERTAgent():
                 num_batches+=1
 
                 if (int(data_manager.batch % 5000) == 0):
-                    print("Progress: " + str(data_manager.get_epoch_completion()) + "%")
+                    print("Progress: " + str(data_manager.get_epoch_completion()) + "%", flush=True)
 
                 if (save_loc==None): 
                     guesses = self.answer_knn(gpu_inputs, 1, question_pooled=pooled_questions, id_only=True).to(device)
