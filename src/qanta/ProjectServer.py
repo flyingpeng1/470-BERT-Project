@@ -510,7 +510,7 @@ def buzzeval(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_fi
     vocab = load_vocab(vocab_file)
 
     print("Initializing data", flush=True)
-    agent = BuzzAgent(model)
+    agent = BuzzAgent(None)
     agent.load_model(buzzer_file)
     agent.load_data_from_file(data_file, batch_size=batch_size)
 
