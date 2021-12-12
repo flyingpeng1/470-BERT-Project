@@ -1,0 +1,32 @@
+version: '3'
+services:
+  bert_qb:
+    build: .
+    container_name: bert_qb
+    ports:
+      - "4861:4861"
+    volumes:
+      - ./src/:/src
+      - ./data/:/src/data
+    command: ["bash", "run.sh"]
+    environment:
+      - PYTHONUNBUFFERED=0
+  bert_eval:
+    image: "docker.io/entilzha/quizbowl:0.1"
+    volumes:
+      - ./src/:/src
+      - ./data/:/src/data
+      - ./:/eval
+    command: [
+      "python", "/eval/evaluate.py",
+      "--curve-pkl", "/eval/curve_pipeline.pkl",
+      "--wait", "5",
+      "--hostname", "bert_qb",
+      "--norun-web",
+      "--char_step_size", "60",
+      "data/qanta.dev.2018.04.18.json"
+    ]
+    depends_on:
+      - "bert_qb"
+    environment:
+      - "PYTHONUNBUFFERED=1"

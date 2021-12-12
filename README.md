@@ -1,53 +1,139 @@
-# QuizBERT - leveraging BERT to answer quizbowl questions
-By Jack, Will, Charlie, and Xavier
+# WARPed QuizBERT - leveraging BERT and WARP loss to answer Quizbowl questions
+By Jack, Charlie, Will, and Xavier
 
 
 ## Introduction
-This documentation is not complete, and needs to be worked on.
-This project is based on the reference system - refer to the reference system documentation for more information.
+This project is based on the Codalab reference system - refer to the reference system documentation for more information on the structure of the project.
+https://github.com/Pinafore/qanta-codalab
 
-This is a system designed to answer quizbowl questions using transformers bert wrapped with a linear layer to produce answer probabilities.
+
+This is a system designed to answer Quizbowl questions using transformers BERT in a network of embedding layers to produce answers to natural questions.
 Refer to the diagram for more details.
 
 ![Guesser diagram](BERT_diagram.png)
 
-Steps for training and using the system:
-  - Download the necessary data files for training with the download command
-  - Generate an answer vocab using the train file
-  - Run the training command
-  - Run the web server
 
-## Progress report 11/19/2021
+## Instructions
+In order to use the system, you must make sure that you have a few things set up first. Docker will take care of most dependencies, but you must make sure that you have installed:
 
-The guesser is ready to train. We are behind schedule because the original idea for combining the buzzer and guesser was infeasible. The buzzer is dependent on the guess, which makes backpropogation in a combined model not sensible. We have decided to use the pooled output vectors from BERT and some additional features from the large final output in buzzer that closely resembles the feature engineering buzzer model. 
-
-Things left to do in development:
-- Get Xavier's big computer set up booting from ubuntu with nvidia-docker for effective training - Xavier
-- Get buzzer training and running - Will and Xavier
-- Get data manager to chop up sentences when training to better simulate the quizbowl experience - Charlie
-- Integrate the buzzer into the system - Jack
-- System evaluation - Xavier
-- Write-up - All
-- Presentation - All
-
-The new timeline is as follows:
-
-● (Over Thanksgiving Break) Training our model for the first time with the qanta data.
-
-● (Over Thanksgiving Break) Getting the new buzzer idea working, and training the buzzer.
-
-● (11/26) Comparing model to the original tf-idf / logreg model - we hope to de better, 
-but with minimal training resources, this may not turn out to be feasible in the time available.
-
-● (11/27) Improve the model based on deliverable feedback - may include finding new
-features in input to the model, extra layers to handle the output, etc.
-
-● (12/10) Start on Final Presentation
-
-● (12/15) Final Writeup
+- Nvidia drivers  (VRAM >= 4GB)
+- docker          (latest version)
+- nvidia-docker   (latest version)
+- docker-compose  (version > 1.28.0 - current default version does NOT support GPU and will crash)
 
 
-## Run project modules in local environment (must manually set up environment)
+To run in CPU only mode, rename 'docker-compose - CPU_ONLY - RENAME' to 'docker-compose' and continue with all of the following steps. You will only need:
+
+- docker          (latest version)
+- docker-compose  (latest version)
+
+
+Next, you must download the model file and place it in the data folder:
+https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj
+
+Alternatively, run the command to download the model automatically:
+`docker-compose run bert_qb ./cli download_model`
+
+
+Finally, you may start the system using the command:
+
+`docker-compose up bert_qb`
+
+or launch both the answer server and the evaluator
+`docker-compose up`
+
+
+This will launch a web server accessible through the same means as the reference system.
+
+
+## Running commands through docker-compose
+
+If you want to run individual commands or train the system yourself, you should use
+`docker-compose run bert_qb ./cli `
+followed by the command that you desire to run:
+
+
+run the model to answer questions and buzz
+`web`
+  `--vocab_file "path to vocab file to use"`
+  `--model_file "path to model file to use"`
+  `--buzzer_file "path to buzzer file to use"`
+  `--link_file "path to link file csv to use"`
+  `--host`
+  `--port`
+
+download the qanta data
+`download` 
+
+download the model
+`download_model`
+
+trains model and saves it in specified loaction
+`train`  
+  `--vocab_file "path to vocab file"`
+  `--train_file "path to data file containing train set"`
+  `--data_limit [number of questions to load (defaults to all)]`
+  `--epochs [number of epochs to run]`
+  `--resume *flag telling system to resume from previous model file`
+  `--resume_file "path to model file to resume training from"`
+  `--preloaded_manager *flag telling system to load data manager from file`
+  `--manager_file "path to data manager file"`
+  `--save_regularity [% of progress through an epoch to save (make over 100% for saving every epoch or more)]`
+  `--category_only * flag telling system to train on category intead of answer page`
+  `--eval_freq [how many epochs between every evaluation cycle]`
+  `--unfreeze_layers "what BERT layers should be unfrozen when training in format like: 10+11+12 for freezing top 3 layers"`
+
+
+`evaluate`
+  `--vocab_file`
+  `--model_file`
+  `--split_sentences`
+  `--dobuzztrain`
+  `--buzztrainfile`
+  `--preloaded_manager`
+  `--manager_file`
+  `--data_file`
+  `--top_k`
+  `--category_only`
+  `--data_limit`
+
+
+generate the answer vocab file
+`generate_vocab`
+  `--save_location "path to save file to"`
+  `--data_file "path to data file to use"`
+  `--category_only *flag telling system to make a vocab for question categorization istead of answer page`
+
+generate pre-loaded data manager file
+`makemanager`
+  `--vocab_location`
+  `--save_location`
+  `--data_file`
+  `--limit`
+  `--category_only`
+  `--cache_pool (unless you know what you are doing, don't use this!)`
+  `--split_sentences`
+
+launches interactive command line for exploring manager files like database tables
+`managerdatabase`
+  `--vocab_file`
+  `--manager_file`
+
+training the buzzer
+`buzztrain`
+  `--vocab_file`
+  `--vocab_file`
+  `--buzzer_file`
+  `--data_file`
+  `--data_limit`
+  `--num_epochs`
+  `--link_file`
+  `--batch_size`
+
+will check if CUDA is available
+`cudatest`
+
+## Run project modules in local environment (must manually set up environment - NOT reccomended)
 
 Run project model only
 `470-BERT-Project\src>python -m qanta.ProjectModel` 
@@ -59,98 +145,7 @@ Run project server only - use any of the commands that you would have used in do
 `470-BERT-Project\src>python -m qanta.ProjectServer`
 
 
-## Run project in container
-
-launch both the answer server and the evaluator
-`docker-compose up`
-
-launch just the answer server
-`docker-compose up bert_qb`
-
-download the data
-`docker-compose run bert_qb ./cli download` 
-
-trains model and saves it in specified loaction
-`docker-compose run bert_qb ./cli train`  
-  `--vocab_file "path to vocab file - REQUIRED"`
-  `--train_file "path to data file containing train set"`
-  `--data_limit [number of questions to load (defaults to all)]`
-  `--epochs [number of epochs to run]`
-  `--resume *flag telling system to resume from previous model file`
-  `--resume_file "path to model file to resume training from"`
-  `--preloaded_manager *flag telling system to load data manager from file`
-  `--manager_file "path to data manager file"`
-
-generate the answer vocab file
-`docker-compose run bert_qb ./cli generate_vocab`
-  `--save_location "path to save file to"`
-  `--data_file "path to data file to use"`
-
-run the model to answer questions and buzz
-`docker-compose run bert_qb ./cli web`
-  `--vocab_file "path to vocab file to use"`
-  `--model_file "path to model file to use"`
-  `--host`
-  `--port`
-
-run the model to answer questions and buzz
-`docker-compose run bert_qb ./cli web`
-  `--vocab_file "path to vocab file to use"`
-  `--model_file "path to model file to use"`
-  `--host`
-  `--port`
 
 
-
-some commands I like to use - Jack
-
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 40
-
-python -m qanta.ProjectServer web --vocab_file ../data/QuizBERTSmall.vocab --model_file ../data/QuizBERT.model
-
-python -m qanta.ProjectServer vocab --save_location ../data/QuizBERT.vocab --data_file ../data/qanta.train.2018.04.18.json
-
-python -m qanta.ProjectServer evaluate --vocab_file ../data/QuizBERTSmall.vocab --data_file ../data/qanta.dev.2018.04.18.json --model_file ../data/QuizBERT.model
-
-
-python -m qanta.ProjectServer vocab --save_location ../data/QuizBERTCategory.vocab --data_file ../data/qanta.dev.2018.04.18.json --category_only
-
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTCategory.vocab --train_file ../data/qanta.dev.2018.04.18.json --category_only --save_regularity 1000 --epochs 2
-
-
-
-
-sudo docker-compose run -d --name trainer bert_qb ./cli train --epochs 30 --save_regularity 100 --category_only --vocab_file /src/data/QuizBERTCategory.vocab --preloaded_manager
-
-
-sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model
-
-python -m qanta.ProjectServer train --vocab_file ../data/QuizBERTSmall.vocab --train_file ../data/qanta.dev.2018.04.18.json --save_regularity 1000 --epochs 200 --unfreeze_layers 11+12+13
-
-sudo docker-compose run bert_qb ./cli evaluate --category_only --vocab_file /src/data/QuizBERTCategory.vocab --dobuzztrain --data_file /src/data/qanta.test.2018.04.18.json --model_file /src/training_progress/QuizBERTCategory.model 
-
-
-python -m qanta.ProjectServer evaluate --data_file ../data/qanta.test.2018.04.18.json --model_file ../data/QuizBERT.model --vocab_file ../data/QuizBERT.vocab --dobuzztrain --buzztrainfile ../data/buzztrain.json
-
-
-python -m qanta.ProjectServer managerdatabase --vocab_file ../data/QuizBERT.vocab --manager_file ../data/QBERT_Data.manager
-
---unfreeze_layers 9+10+11+12
-
-
-
-sudo docker-compose run -d --name evaluator bert_qb ./cli evaluate --dobuzztrain --preloaded_manager --manager_file /src/data/QuizBERTSplitData.manager
-
-
-
-sudo docker-compose run -d --name managerbuilder bert_qb ./cli makemanager  --split_sentences --save_location /src/data/QuizBERTSplitData.manager
-
-
-python -m qanta.ProjectServer buzztrain --vocab_file ../data/QuizBERT.vocab --buzzer_file ../data/QuizBERTBuzzer.model --data_file ../data/buzztrain.json
-
-
-
-sudo docker-compose run -d --name buzztrain bert_qb ./cli buzztrain
-
-
-python -m qanta.ProjectServer web --vocab_file ../data/QuizBERT.vocab --model_file ../data/QuizBERT.model --buzzer_file ../data/QuizBERTBuzzer.model --link_file ../wiki_links.csv
+Guesser model download link:
+https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj

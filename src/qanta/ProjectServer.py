@@ -54,7 +54,7 @@ def get_eval_only_bert_model(cache_location):
 #=======================================================================================================
 def guess_and_buzz(guesser, buzzer, text):
     output = guesser.guess(text)
-    buzz = buzzer.buzz(output)
+    buzz = buzzer.buzz(output)[0]
     return (output["buzzer_data"][0]["guess"], buzz.cpu().tolist()[0][0]>0.5, output["buzzer_data"][0]["kguess"],  output["buzzer_data"][0]["kguess_scores"], buzz.cpu().tolist()[0][0])
 
 #=======================================================================================================
@@ -88,7 +88,7 @@ def load_model(callback, vocab_file, model_file):
 def load_buzzer(callback, vocab_file, buzzer_file, link_file):
     vocab = load_vocab(vocab_file)
 
-    agent = LogRegAgent(None, vocab, link_file=link_file)
+    agent = BuzzAgent(None, vocab)
     agent.load_model(buzzer_file)
     agent.model.eval()
     
@@ -238,7 +238,7 @@ def web(host, port, vocab_file, model_file, buzzer_file, link_file):
 @click.option('--save_regularity', default=1000000)
 @click.option('--category_only', default=False, is_flag=True)
 @click.option('--eval_freq', default=0)
-@click.option('--unfreeze_layers', default="13") # num layers to unfreeze, seperated by +
+@click.option('--unfreeze_layers', default="12") # num layers to unfreeze, seperated by +
 def train(vocab_file, train_file, data_limit, epochs, resume, resume_file, preloaded_manager, manager_file, save_regularity, category_only, eval_freq, unfreeze_layers):
     print("Loading resources...", flush = True)
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
@@ -388,6 +388,11 @@ def download(local_qanta_prefix):
     util.download(local_qanta_prefix, False)
 
 
+@click.option('--link', default='https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj')
+@click.option('--location', default='data/')
+def download_model(link, location):
+    util.shell(f'wget -O {location} {link}')
+
 #/src/data/wiki_links.csv
 @cli.command()
 @click.option('--vocab_file', default=VOCAB_LOCATION)
@@ -399,13 +404,13 @@ def download(local_qanta_prefix):
 @click.option('--batch_size', default=1)
 def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file, batch_size): 
     vocab = load_vocab(vocab_file)
-    data = GuessDataset(vocab, link_file)
+    data = GuessDataset(vocab)
     print("Initializing data", flush=True)
     data.initialize(open(data_file))
 
     print("Training model", flush=True)
-    model = LogRegModel(len(data[0][0]))
-    agent = LogRegAgent(model, vocab, link_file)
+    model = BuzzModel(len(data[0][0]))
+    agent = BuzzAgent(model, vocab)
     agent.load_data(open(data_file), batch=batch_size)
     agent.train(num_epochs, model, buzzer_file)
 
