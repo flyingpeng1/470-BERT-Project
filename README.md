@@ -12,6 +12,14 @@ Refer to the diagram for more details.
 
 ![Guesser diagram](BERT_diagram.png)
 
+## Running Locally (For competition)
+The working directory MUST be `src`, and you MUST use the command `python -m qanta.qbmodel` for the files to import correctly. This is an artifact of following the original Codalab specifications, and does not seem to be easily fixable without regenerating the model, which would take multiple days.
+
+When importing, use `from qanta.qbmodel import *` to make sure everything imports correctly. Thank you for your patience!
+
+`sh gather_resources.sh` should work as intended and download the model
+
+A requirements.txt file is included to help you set up your environment (Disclaimer: not all of the things in this file are dependencies - some may have been included from my environment by accident)
 
 ## Instructions
 If you don't want to run the system and just want to see the resulting performance, you can view test_evaluation_output.json, dev_evaluation_output.json, and their associated logs test_eval.txt and dev_eval.txt
@@ -35,6 +43,9 @@ https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZA
 
 Alternatively, run the command to download the model automatically:
 `docker-compose run bert_qb ./cli download_model`
+
+Edit: this does not work! Please use the gather_resources.sh script to download the file from Google Drive!
+`sh gather_resources.sh`
 
 
 Finally, you may start the system using the command:

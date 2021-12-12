@@ -1,0 +1,1 @@
+python3 Drive_download.py 1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj data/QuizBERT.model
