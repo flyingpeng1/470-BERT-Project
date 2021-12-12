@@ -515,7 +515,7 @@ def buzzeval(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_fi
     agent.load_data_from_file(data_file, batch_size=batch_size)
 
     print("Training model", flush=True)
-    print("Buzz accuracy: " + str(agent.evaluate(agent.dataset.to(device))*100) + "%")
+    print("Buzz accuracy: " + str(agent.evaluate(agent.dataset)*100) + "%")
 
 
 
