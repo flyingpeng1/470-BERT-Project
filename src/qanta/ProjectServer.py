@@ -243,7 +243,7 @@ def web(host, port, vocab_file, model_file, buzzer_file, link_file):
 @click.option('--save_loc', default=EVALUATION_FILE_LOCATION)
 def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save_loc):    
     guesser = Project_Guesser(vocab_file, model_file)
-    buzzer = Project_Buzzer(buzzer_file, vocab_file, links_file)
+    buzzer = Project_Buzzer(buzzer_file, vocab_file, link_file)
     
     data = json.load(open(data_file))["questions"]
 
@@ -256,7 +256,7 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
     num_questions=0
     num_guessed_correct=0
     num_buzzed_correct=0
-    num_corrrect=0
+    num_correct=0
     num_truly_incorrrect=0
     num_truly_refused=0
     num_possible=0
@@ -294,7 +294,7 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
     textfile = open(save_loc, "w")
     json_dict = {
             "num_questions":0, 
-            "num_corrrect":num_corrrect, 
+            "num_corrrect":num_correct, 
             "num_truly_incorrrect":num_truly_incorrrect, 
             "num_guessed_correct":num_guessed_correct,
             "num_buzzed_correct":num_buzzed_correct,
@@ -306,7 +306,7 @@ def playquizbowl(vocab_file, model_file, buzzer_file, link_file, data_file, save
     json.dump(json_dict, textfile)
     textfile.close()
 
-    print("Final accuracy (Refused to buzz considered wrong): " + str((num_buzzed_correct/num_questions)*100) + "%")
+    print("Final accuracy (Refused to buzz considered wrong): " + str((num_correct/num_questions)*100) + "%")
     print("Final accuracy (Refused to buzz considered correct): " + str((num_guessed_correct/num_questions)*100) + "%")
 
 # run to train the model - vocab_file and train_file are required!
