@@ -149,8 +149,8 @@ if __name__ == '__main__':
     print("Initializing Model...")
     model = BuzzModel(4)
 
-    agent = BuzzAgent(model)
     print("Initializing Agent...")
+    agent = BuzzAgent(model)
 
     agent.load_data_from_file("guess_dataset_sample.json")
     agent.train()
