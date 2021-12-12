@@ -14,6 +14,8 @@ Refer to the diagram for more details.
 
 
 ## Instructions
+If you don't want to run the system and just want to see the resulting performance, you can view test_evaluation_output.json, dev_evaluation_output.json, and their associated logs test_eval.txt and dev_eval.txt
+
 In order to use the system, you must make sure that you have a few things set up first. Docker will take care of most dependencies, but you must make sure that you have installed:
 
 - Nvidia drivers  (VRAM >= 4GB)
@@ -149,8 +151,7 @@ evaluating the buzzer
   `--link_file`
   `--batch_size`
 
-
-will check if CUDA is available
+check if CUDA is available
 `cudatest`
 
 ## Run project modules in local environment (must manually set up environment - NOT reccomended)
