@@ -339,6 +339,7 @@ class BERTAgent():
         acc=0.0
         num_batches = 0.0
         guess_metadata = []
+        num_correct = 0
 
         # must go one at a time when recording pooler output
         if (not save_loc==None):
@@ -356,7 +357,7 @@ class BERTAgent():
                 num_batches+=1
 
                 if (int(data_manager.batch % 5000) == 0):
-                    print("Progress: " + str(data_manager.get_epoch_completion()) + "%")
+                    print("Progress: " + str(data_manager.get_epoch_completion()) + "%", flush=True)
 
                 if (save_loc==None): 
                     guesses = self.answer_knn(gpu_inputs, 1, question_pooled=pooled_questions, id_only=True).to(device)
@@ -364,7 +365,13 @@ class BERTAgent():
                 else:
                     guesses = self.answer_knn(gpu_inputs, k, question_pooled=pooled_questions, id_only=False)
                     guess = guesses[0]
-                    correct = (labels[0] == guess)
+                    #print(labels[0].tolist(), flush=True)
+                    #print("guess: ", flush=True)
+                    #print(guess[0][2].cpu().tolist(), flush=True)
+                    correct = (labels[0].tolist() == guess[0][2].cpu().tolist())
+
+                    if (correct):
+                        num_correct+=1
 
                     full_text = None
                     if (not tokenizer == None):
@@ -399,6 +406,7 @@ class BERTAgent():
                         }
                 json.dump(json_dict, textfile)
                 textfile.close()
+                print(str(num_correct), flush=True)
 
 
 # used to test this file - please ignore this junk
