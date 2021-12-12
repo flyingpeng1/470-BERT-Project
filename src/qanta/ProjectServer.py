@@ -31,6 +31,7 @@ TEST_FILE_LOCATION = "/src/data/qanta.test.2018.04.18.json"
 TRAINING_PROGRESS_LOCATION = "training_progress"
 BUZZTRAIN_LOCATION = "/src/data/buzztrain.json"
 LINK_FILE_LOCATION = "/src/data/wiki_links.csv"
+EVALUATION_FILE_LOCATION = "/src/data/evaluation.json"
 
 LOCAL_CACHE_LOCATION = "cache"
 LOCAL_VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
@@ -55,7 +56,7 @@ def get_eval_only_bert_model(cache_location):
 def guess_and_buzz(guesser, buzzer, text):
     output = guesser.guess(text)
     buzz = buzzer.buzz(output)[0]
-    return (output["buzzer_data"][0]["guess"], buzz.cpu().tolist()[0][0]>0.5, output["buzzer_data"][0]["kguess"],  output["buzzer_data"][0]["kguess_scores"], buzz.cpu().tolist()[0][0])
+    return (output["buzzer_data"][0]["guess"], buzz.cpu().tolist()[0]>0.4, output["buzzer_data"][0]["kguess"],  output["buzzer_data"][0]["kguess_scores"], buzz.cpu().tolist()[0])
 
 #=======================================================================================================
 # Combines batch guesser and buzzer outputs
@@ -65,7 +66,7 @@ def batch_guess_and_buzz(guesser, buzzer, text):
     guesses = [g["guess"] for g in out["buzzer_data"]]
     kguess = [g["kguess"] for g in out["buzzer_data"]]
     kguess_scores = [g["kguess_scores"] for g in out["buzzer_data"]]
-    buzzes = buzzer.buzz(out)
+    buzzes = buzzer.buzz(out, will_round=False)
     return zip(guesses, buzzes, kguess, kguess_scores)
 
 #=======================================================================================================
@@ -144,6 +145,9 @@ class Project_Guesser():
         self.ready = True
         print("Model is loaded!", flush=True)
 
+    def wait_for_load(self):
+        self.load_thread.join()
+
 class Project_Buzzer():
     def __init__(self, buzzer_file, vocab_file, links_file):
         self.agent = None
@@ -159,11 +163,14 @@ class Project_Buzzer():
 
     # Uses buzzer
     def buzz(self, guesser_output):
-        return self.agent.buzz(guesser_output)
+        return self.agent.buzz(guesser_output, will_round=False)
 
     # Uses buzzer in batch
     def batch_buzz(self, guesser_output):
         return self.agent.buzz(guesser_output)
+
+    def wait_for_load(self):
+        self.load_thread.join()
 
     def isReady(self):
         return self.ready
@@ -224,6 +231,83 @@ def web(host, port, vocab_file, model_file, buzzer_file, link_file):
     app = create_app(vocab_file, model_file, buzzer_file, link_file)
     print("Starting web app")
     app.run(host=host, port=port, debug=True)
+
+
+# Run through a dataset to evaluate overall model accuracy
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--model_file', default=MODEL_LOCATION)
+@click.option('--buzzer_file', default=BUZZER_LOCATION)
+@click.option('--link_file', default=LINK_FILE_LOCATION)
+@click.option('--data_file', default=TEST_FILE_LOCATION)
+@click.option('--save_loc', default=EVALUATION_FILE_LOCATION)
+def playquizbowl(host, port, vocab_file, model_file, buzzer_file, link_file, data_file, save_loc):    
+    guesser = Project_Guesser(vocab_file, model_file)
+    buzzer = Project_Buzzer(buzzer_file, vocab_file, links_file)
+    
+    data = json.load(open(data_file))["questions"]
+
+    guesser.wait_for_load()
+    buzzer.wait_for_load()
+
+    truly_incorrect = []
+    truly_answer_refused = []
+
+    num_questions=0
+    num_guessed_correct=0
+    num_buzzed_correct=0
+    num_corrrect=0
+    num_truly_incorrrect=0
+    num_truly_refused=0
+    num_possible=0
+
+    for q in data:
+        question = q["text"]
+        answer = q["page"]
+
+        guess, buzz, kguess, kguess_scores, confidence = guess_and_buzz(guesser, buzzer, question)
+        num_questions+=1
+
+        possible = not guesser.vocab.get_indexes([answer])[0] == 0
+
+        if (guess == answer):
+            num_guessed_correct+=1
+
+        if (((not guess == answer) and not buzz) or guess == answer and buzz):
+            num_buzzed_correct+=1
+
+        if (guess == answer and buzz):
+            num_correct+=1
+
+        if ((not guess == answer) and buzz and possible):
+            num_truly_incorrrect+=1
+            truly_incorrect.append({"text":question, "page":answer, "kguess":kguess, "kguess_scores":kguess_scores, "confidence":confidence})
+
+        if ((not guess == answer) and (not buzz) and possible):
+            num_truly_refused+=1
+            truly_answer_refused.append({"text":question, "page":answer, "kguess":kguess, "kguess_scores":kguess_scores, "confidence":confidence})
+
+        if (possible):
+            num_possible+=1
+
+
+    textfile = open(save_loc, "w")
+        json_dict = {
+            "num_questions":0, 
+            "num_corrrect":num_corrrect, 
+            "num_truly_incorrrect":num_truly_incorrrect, 
+            "num_guessed_correct":num_guessed_correct,
+            "num_buzzed_correct":num_buzzed_correct,
+            "num_possible":num_possible,
+            "num_truly_refused":num_truly_refused,
+            "incorrect":truly_incorrect,
+            "truly_answer_refused":truly_answer_refused
+            }
+        json.dump(json_dict, textfile)
+        textfile.close()
+
+    print("Final accuracy (Refused to buzz considered wrong): " + str((num_buzzed_correct/num_questions)*100) + "%")
+    print("Final accuracy (Refused to buzz considered correct): " + str((num_guessed_correct/num_questions)*100) + "%")
 
 # run to train the model - vocab_file and train_file are required!
 @cli.command()
@@ -413,8 +497,28 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
     print("Training model", flush=True)
     agent.train(num_epochs, save_loc=buzzer_file)
 
-    data = json.load(data_file)
-    print(agent.evaluate(data), flush=True)
+
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--buzzer_file', default=BUZZER_LOCATION)
+@click.option('--data_file', default=BUZZTRAIN_LOCATION)
+@click.option('--data_limit', default=-1)
+@click.option('--num_epochs', default=10)
+@click.option('--link_file', default=LINK_FILE_LOCATION)
+@click.option('--batch_size', default=1)
+def buzzeval(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file, batch_size): 
+    vocab = load_vocab(vocab_file)
+
+    print("Initializing data", flush=True)
+    agent = BuzzAgent(model)
+    agent.load_model(buzzer_file)
+    agent.load_data_from_file(data_file, batch_size=batch_size)
+
+    print("Training model", flush=True)
+    print("Buzz accuracy: " + str(agent.evaluate(agent.dataset.to(device))*100) + "%")
+
+
+
 
 
 if __name__ == '__main__':
