@@ -404,15 +404,17 @@ def download_model(link, location):
 @click.option('--batch_size', default=1)
 def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_file, batch_size): 
     vocab = load_vocab(vocab_file)
-    data = GuessDataset(vocab)
+
     print("Initializing data", flush=True)
-    data.initialize(open(data_file))
+    model = BuzzModel(4)
+    agent = BuzzAgent(model)
+    agent.load_data_from_file(data_file, batch_size=batch_size)
 
     print("Training model", flush=True)
-    model = BuzzModel(len(data[0][0]))
-    agent = BuzzAgent(model, vocab)
-    agent.load_data(open(data_file), batch=batch_size)
-    agent.train(num_epochs, model, buzzer_file)
+    agent.train(num_epochs, save_loc=buzzer_file)
+
+    data = json.load(data_file)
+    print(agent.evaluate(data), flush=True)
 
 
 if __name__ == '__main__':
