@@ -19,16 +19,36 @@ class Sample:
         self.y = None
 
         features = []
+        guess = guess_data["guess"]
+        score = guess_data["score"]
+        kguess_scores = guess_data["kguess_scores"]
+        q_length = guess_data["question_nonzero_tokens"]/412
+        q_text = guess_data["full_question"]
+
+        # guess embedding
+        # TODO
 
         # score
-        features.append(guess_data["score"])
+        features.append(score)
         # diff between top 2 scores
-        features.append(guess_data["kguess_scores"][0] - guess_data["kguess_scores"][1])
+        features.append(kguess_scores[0] - kguess_scores[1])
         # ave diff between 1st score and others
-        temp = [guess_data["kguess_scores"][0] - x for x in guess_data["kguess_scores"][1:]]
+        temp = [kguess_scores[0] - x for x in kguess_scores[1:]]
         features.append(sum(temp)/len(temp))
         # question length
-        features.append(guess_data["question_nonzero_tokens"]/412)
+        features.append(q_length)
+
+        # wiki links
+        # TODO
+
+        # score X length
+        # features.append(score * q_length)
+
+        # disambiguation
+        # if '(' in guess and ')' in guess:
+        #     features.append(float(guess[guess.find("(")+1:guess.find(")")] in q_text))
+        # else:
+        #     features.append(0.0)
 
         self.x = np.array(features)
         if "label" in guess_data:
@@ -67,8 +87,9 @@ class GuessDataset(Dataset):
 class BuzzModel(nn.Module):
     def __init__(self, num_features, num_hidden_units=50, nn_dropout=.5):
         super(BuzzModel, self).__init__()
-        self.linear1 = nn.Linear(num_features, num_hidden_units)
-        self.linear2 = nn.Linear(num_hidden_units, 1)
+        self.num_hidden_units = num_hidden_units
+        self.linear1 = nn.Linear(num_features, self.num_hidden_units)
+        self.linear2 = nn.Linear(self.num_hidden_units, 1)
         self.buzzer = nn.Sequential(self.linear1, nn.ReLU(), nn.Dropout(nn_dropout), self.linear2)
 
     def forward(self, x):
@@ -157,8 +178,7 @@ if __name__ == '__main__':
     print("Initializing Agent...")
     agent = BuzzAgent(model)
 
-    with open("guess_dataset_sample.json") as file:
-        data = json.load(file)
+    data = json.load(open("guess_dataset_sample.json"))
 
     print("Pre-train:")
     print(agent.buzz(data))
@@ -169,3 +189,4 @@ if __name__ == '__main__':
     print("Post-train:")
     print(agent.buzz(data))
     print(agent.evaluate(data))
+    
