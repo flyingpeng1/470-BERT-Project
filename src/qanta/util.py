@@ -78,8 +78,12 @@ def download(local_qanta_prefix, retrieve_paragraphs=False):
 def give_confidence(guess, question_text, df):
     count = 0
     repeated = ""
-    for i in df[guess]:
-        if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
-            repeated += i
-            count += 1
-    return count
+    try:
+        for i in df[guess]:
+            if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
+                repeated += i
+                count += 1
+        return count
+    except:
+        print("links search failed")
+        return 0

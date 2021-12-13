@@ -8,15 +8,15 @@ import pandas as pd
 from qanta.ProjectServer import *
 
 VOCAB_FILE = "../data/QuizBERT.vocab"
-MODEL_FILE = "../data/QuizBERT.model"
-BUZZER_FILE = "../data/QuizBERTBuzzer.model"
+MODEL_FILE = "../data/QuizBERT.torchmodel"
+BUZZER_FILE = "../data/QuizBERTBuzzer.torchmodel"
 LINK_FILE = "../data/wiki_links.csv"
 
 class QuizBowlModel:
 
     def __init__(self):
-        self.guesser = Project_Guesser(VOCAB_FILE, MODEL_FILE)
-        self.buzzer = Project_Buzzer(BUZZER_FILE, VOCAB_FILE, LINK_FILE)
+        self.guesser = Project_Guesser(VOCAB_FILE, MODEL_FILE, torch_mode=True)
+        self.buzzer = Project_Buzzer(BUZZER_FILE, VOCAB_FILE, LINK_FILE, torch_mode=True)
         
         self.guesser.wait_for_load()
         self.buzzer.wait_for_load()

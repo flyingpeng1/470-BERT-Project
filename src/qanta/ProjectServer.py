@@ -25,7 +25,9 @@ CACHE_LOCATION = "/src/cache"
 VOCAB_LOCATION = "/src/data/QuizBERT.vocab"
 DATA_MANAGER_LOCATION = "/src/data/QBERT_Data.manager"
 MODEL_LOCATION = "/src/data/QuizBERT.model"
+TORCH_MODEL_LOCATION = "/src/data/QuizBERT.torchmodel"
 BUZZER_LOCATION = "/src/data/QuizBERTBuzzer.model"
+TORCH_BUZZER_LOCATION = "/src/data/QuizBERTBuzzer.torchmodel"
 TRAIN_FILE_LOCATION = "/src/data/qanta.train.2018.04.18.json"
 TEST_FILE_LOCATION = "/src/data/qanta.test.2018.04.18.json"
 TRAINING_PROGRESS_LOCATION = "training_progress"
@@ -89,7 +91,7 @@ def load_model(callback, vocab_file, model_file):
 def load_buzzer(callback, vocab_file, buzzer_file, link_file):
     vocab = load_vocab(vocab_file)
 
-    agent = BuzzAgent(None)
+    agent = BuzzAgent(None, link_file)
     agent.load_model(buzzer_file)
     agent.model.eval()
     
@@ -496,12 +498,11 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
 
     print("Initializing data", flush=True)
     model = BuzzModel(4)
-    agent = BuzzAgent(model)
+    agent = BuzzAgent(model, link_file)
     agent.load_data_from_file(data_file, batch_size=batch_size)
 
     print("Training model", flush=True)
     agent.train(num_epochs, save_loc=buzzer_file)
-
 
 @cli.command()
 @click.option('--vocab_file', default=VOCAB_LOCATION)
@@ -515,16 +516,36 @@ def buzzeval(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_fi
     vocab = load_vocab(vocab_file)
 
     print("Initializing data", flush=True)
-    agent = BuzzAgent(None)
+    agent = BuzzAgent(None, link_file)
     agent.load_model(buzzer_file)
     agent.load_data_from_file(data_file, batch_size=batch_size)
 
     print("Training model", flush=True)
     print("Buzz accuracy: " + str(agent.evaluate(agent.dataset)*100) + "%")
 
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--model_file', default=MODEL_LOCATION)
+@click.option('--torch_model_file', default=TORCH_MODEL_LOCATION)
+def convertmodel(vocab_file, model_file, torch_model_file):
+    vocab = load_vocab(vocab_file)
+    agent = BERTAgent(None, vocab)
+    agent.load_model(model_file, None)
+    agent.torch_save_model(torch_model_file)
+    agent.torch_load_model(torch_model_file)
+    print("Successfully converted to torchmodel!", flush=True)
 
-
-
+@cli.command()
+@click.option('--vocab_file', default=VOCAB_LOCATION)
+@click.option('--model_file', default=BUZZER_LOCATION)
+@click.option('--torch_model_file', default=TORCH_BUZZER_LOCATION)
+def convertbuzzermodel(vocab_file, model_file, torch_model_file):
+    vocab = load_vocab(vocab_file)
+    agent = BuzzAgent(None)
+    agent.load_model(model_file)
+    agent.torch_save_model(torch_model_file)
+    agent.torch_load_model(torch_model_file)
+    print("Successfully converted to torchmodel!", flush=True)
 
 if __name__ == '__main__':
     print("Starting QB")

@@ -177,6 +177,11 @@ class BERTAgent():
         pickle.dump({"model": self.model, "metadata":metadata}, open(save_location, "wb+"))
         print("Saved model to: \"" + save_location + "\"", flush = True)
 
+    # Save model and its associated metadata 
+    def torch_save_model(self, save_location):
+        torch.save(self.model, save_location)
+        print("torch saved model to: \"" + save_location + "\"", flush = True)
+
     # Load the model and its associated metadata
     def load_model(self, file_name, data_manager=None):
         load = pickle.load(open(file_name,'rb'))
@@ -192,6 +197,11 @@ class BERTAgent():
             print("No metadata found / no data manager provided - starting from epoch 0")
 
         self.optimizer = torch.optim.Adamax(self.model.parameters(), lr=0.0001)
+        print("Loaded model from: \"" + file_name + "\"", flush = True)
+
+    # Load the model and its associated metadata
+    def torch_load_model(self, file_name):
+        self.model = torch.load(file_name, map_location=device)
         print("Loaded model from: \"" + file_name + "\"", flush = True)
 
     # Run through a full cycle of training data - save freq and save_loc will determine whether the model is saved after the epoch is finished
