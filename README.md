@@ -12,8 +12,18 @@ Refer to the diagram for more details.
 
 ![Guesser diagram](BERT_diagram.png)
 
+## Running Locally (For competition)
+The working directory MUST be `src`, and you MUST use the command `python -m qanta.qbmodel` for the files to import correctly. This is an artifact of following the original Codalab specifications, and does not seem to be easily fixable without regenerating the model, which would take multiple days.
+
+When importing, use `from qanta.qbmodel import *` to make sure everything imports correctly. Thank you for your patience!
+
+`sh gather_resources.sh` should work as intended and download the model
+
+A requirements.txt file is included to help you set up your environment (Disclaimer: not all of the things in this file are dependencies - some may have been included from my environment by accident)
 
 ## Instructions
+If you don't want to run the system and just want to see the resulting performance, you can view test_evaluation_output.json, dev_evaluation_output.json, and their associated logs test_eval.txt and dev_eval.txt
+
 In order to use the system, you must make sure that you have a few things set up first. Docker will take care of most dependencies, but you must make sure that you have installed:
 
 - Nvidia drivers  (VRAM >= 4GB)
@@ -33,6 +43,9 @@ https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZA
 
 Alternatively, run the command to download the model automatically:
 `docker-compose run bert_qb ./cli download_model`
+
+Edit: this does not work! Please use the gather_resources.sh script to download the file from Google Drive!
+`sh gather_resources.sh`
 
 
 Finally, you may start the system using the command:
@@ -61,6 +74,15 @@ run the model to answer questions and buzz
   `--link_file "path to link file csv to use"`
   `--host`
   `--port`
+
+run the model with a built-in fast evaluator that provides diagnostics
+`playquizbowl`
+  `--vocab_file`
+  `--model_file`
+  `--buzzer_file`
+  `--link_file`
+  `--data_file`
+  `--save_loc`
 
 download the qanta data
 `download` 
@@ -130,7 +152,17 @@ training the buzzer
   `--link_file`
   `--batch_size`
 
-will check if CUDA is available
+evaluating the buzzer
+`buzzeval`
+  `--vocab_file`
+  `--buzzer_file`
+  `--data_file`
+  `--data_limit`
+  `--num_epochs`
+  `--link_file`
+  `--batch_size`
+
+check if CUDA is available
 `cudatest`
 
 ## Run project modules in local environment (must manually set up environment - NOT reccomended)

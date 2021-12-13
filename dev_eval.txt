@@ -1,0 +1,17 @@
+INFO: Using base environemnt
+CUDA is available
+Starting QB
+Loading model
+Buzzer waiting for model to load
+Loaded model from "/src/data/QuizBERTBuzzer.model"
+Buzzer is loaded!
+Agent is waiting for model load!
+No metadata found / no data manager provided - starting from epoch 0
+Loaded model from: "/src/data/QuizBERT.model"
+Model is loaded!
+Must cache answer vectors before calculating KNN
+Caching answer vectors...
+Finished answer caching.. commence evaluation.
+Completed: 90.25270758122743%
+Final accuracy (Refused to buzz considered wrong): 30.46028880866426%
+Final accuracy (Refused to buzz considered correct): 37.454873646209386%

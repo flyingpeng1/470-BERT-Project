@@ -98,6 +98,8 @@ class BuzzModel(nn.Module):
 
 class BuzzAgent():
     def __init__(self, model, learnrate=0.01):
+        self.learnrate = learnrate
+
         if (model):
             self.model = model.to(device)
             self.criterion = nn.BCELoss()
@@ -134,7 +136,7 @@ class BuzzAgent():
                     print("%"+str((ex/len(self.data_loader))*100), flush=True)
                     print("Loss =", loss)
 
-            print("Accuracy: " + str(self.evaluate(self.dataset)))
+            print("Accuracy: " + str(self.evaluate(self.dataset)), flush=True)
 
         if (save_loc):
             self.save_model({"epochs":num_epochs}, save_loc)
@@ -147,12 +149,16 @@ class BuzzAgent():
             acc = y_pred_cls.eq(data.label.to(device)).sum() / float(data.label.to(device).shape[0])
             return acc
 
-    def buzz(self, guess_dataset):
+    def buzz(self, guess_dataset, will_round=True):
         data = GuessDataset(guess_dataset)
         with torch.no_grad():
-            y_pred = self.model(data.feature)
-            y_pred_cls = y_pred.round()
-            return y_pred_cls.bool()
+            y_pred = self.model(data.feature.to(device))
+
+            if (will_round):
+                y_pred_cls = y_pred.round()
+                return y_pred_cls.bool()
+            else:
+                return y_pred
 
     # Save the model and its associated metadata 
     def save_model(self, metadata, save_location):
