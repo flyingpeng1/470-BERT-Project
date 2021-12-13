@@ -75,10 +75,9 @@ def download(local_qanta_prefix, retrieve_paragraphs=False):
 #                 remove(local_file)
 
 
-def give_confidence(guess, question_text, file_location):
+def give_confidence(guess, question_text, df):
     count = 0
     repeated = ""
-    df = pandas.read_csv(file_location,dtype=str)
     for i in df[guess]:
         if str(i) in question_text and str(i) not in repeated and not str(i) == " ":
             repeated += i
