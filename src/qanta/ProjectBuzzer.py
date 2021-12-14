@@ -49,7 +49,7 @@ class Sample:
         else:
             features.append(0.0)
         # wiki links
-        features.append(give_confidence(guess, q_text, df))
+        #features.append(give_confidence(guess, q_text, df))
         features.append(0)
 
         self.gid = np.array(gid)
@@ -112,7 +112,7 @@ class BuzzModel(nn.Module):
 class BuzzAgent():
     def __init__(self, model, links_file_location, learnrate=0.01):
         self.learnrate = learnrate
-        self.links_df = pandas.read_csv(links_file_location, dtype={'a': str})
+        self.links_df = None #pandas.read_csv(links_file_location, dtype={'a': str})
 
         if (model):
             self.model = model.to(device)
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     print()
     
     print("Initializing Model...")
-    model = BuzzModel(6, 100)
+    model = BuzzModel(7, 100)
 
     print("Initializing Agent...")
     agent = BuzzAgent(model, "wiki_links.csv")

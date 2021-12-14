@@ -74,13 +74,16 @@ def batch_guess_and_buzz(guesser, buzzer, text):
 #=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
 #=======================================================================================================
-def load_model(callback, vocab_file, model_file):
+def load_model(callback, vocab_file, model_file, torch_mode):
     tokenizer = BertTokenizer.from_pretrained("bert-large-uncased", cache_dir=CACHE_LOCATION)
     vocab = load_vocab(vocab_file)
 
     #agent = BERTAgent(QuizBERT(25970, cache_dir=CACHE_LOCATION), vocab)
     agent = BERTAgent(None, vocab)
-    agent.load_model(model_file)
+    if (torch_mode):
+        agent.torch_load_model(model_file)
+    else:
+        agent.load_model(model_file)
     agent.model_set_mode("eval")
     
     callback(agent, tokenizer)
@@ -88,11 +91,14 @@ def load_model(callback, vocab_file, model_file):
 #=======================================================================================================
 # Executed in seperate thread so that the model can load without holding up the server.
 #=======================================================================================================
-def load_buzzer(callback, vocab_file, buzzer_file, link_file):
+def load_buzzer(callback, vocab_file, buzzer_file, link_file, torch_mode):
     vocab = load_vocab(vocab_file)
 
     agent = BuzzAgent(None, link_file)
-    agent.load_model(buzzer_file)
+    if (torch_mode):
+        agent.torch_load_model(buzzer_file)
+    else:
+        agent.load_model(buzzer_file)
     agent.model.eval()
     
     callback(agent)
@@ -101,12 +107,12 @@ def load_buzzer(callback, vocab_file, buzzer_file, link_file):
 # Generates gueses using a model from quizbowl questions.
 #=======================================================================================================
 class Project_Guesser():
-    def __init__(self, vocab_file, model_file):
+    def __init__(self, vocab_file, model_file, torch_mode=False):
         print("Loading model")
         self.agent = None
         self.tokenizer = None
         self.ready = False
-        self.load_thread = threading.Thread(target=load_model, args=[self.load_callback, vocab_file, model_file])
+        self.load_thread = threading.Thread(target=load_model, args=[self.load_callback, vocab_file, model_file, torch_mode])
         self.load_thread.start()
 
     # Called with one question string
@@ -151,11 +157,11 @@ class Project_Guesser():
         self.load_thread.join()
 
 class Project_Buzzer():
-    def __init__(self, buzzer_file, vocab_file, links_file):
+    def __init__(self, buzzer_file, vocab_file, links_file, torch_mode=False):
         self.agent = None
         self.tokenizer = None
         self.ready = False
-        self.load_thread = threading.Thread(target=load_buzzer, args=[self.load_callback, vocab_file, buzzer_file, links_file])
+        self.load_thread = threading.Thread(target=load_buzzer, args=[self.load_callback, vocab_file, buzzer_file, links_file, torch_mode])
         self.load_thread.start()
 
     def load_callback(self, agent):
@@ -497,9 +503,9 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
     vocab = load_vocab(vocab_file)
 
     print("Initializing data", flush=True)
-    model = BuzzModel(6, vocab.num_answers)
+    model = BuzzModel(7, vocab.num_answers)
     agent = BuzzAgent(model, link_file)
-    agent.load_data_from_file(data_file, batch_size=batch_size)
+    agent.load_data_from_file(data_file, batch_size=batch_size, limit=data_limit)
 
     print("Training model", flush=True)
     agent.train(num_epochs, save_loc=buzzer_file)

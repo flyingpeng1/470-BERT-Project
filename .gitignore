@@ -6,6 +6,7 @@
 /data/*
 !/data/QuizBERT.vocab
 !/data/QuizBERTBuzzer.model
+!/data/QuizBERTBuzzer.torchmodel
 models/*
 *.pickle
 # Byte-compiled / optimized / DLL files
