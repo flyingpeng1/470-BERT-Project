@@ -505,7 +505,7 @@ def buzztrain(vocab_file, buzzer_file, data_file, data_limit, num_epochs, link_f
     print("Initializing data", flush=True)
     model = BuzzModel(7, vocab.num_answers)
     agent = BuzzAgent(model, link_file)
-    agent.load_data_from_file(data_file, batch_size=batch_size, limit=data_limit)
+    agent.load_data_from_file(data_file, batch_size=batch_size)
 
     print("Training model", flush=True)
     agent.train(num_epochs, save_loc=buzzer_file)
