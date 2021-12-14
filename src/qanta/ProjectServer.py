@@ -547,7 +547,7 @@ def convertmodel(vocab_file, model_file, torch_model_file):
 @click.option('--torch_model_file', default=TORCH_BUZZER_LOCATION)
 def convertbuzzermodel(vocab_file, model_file, torch_model_file):
     vocab = load_vocab(vocab_file)
-    agent = BuzzAgent(None)
+    agent = BuzzAgent(None, None)
     agent.load_model(model_file)
     agent.torch_save_model(torch_model_file)
     agent.torch_load_model(torch_model_file)

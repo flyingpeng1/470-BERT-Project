@@ -38,8 +38,12 @@ To run in CPU only mode, rename 'docker-compose - CPU_ONLY - RENAME' to 'docker-
 - docker-compose  (latest version)
 
 
-Next, you must download the model file and place it in the data folder:
+Next, you must download the model file and place it in the data folder:  
 https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj
+
+
+For CPU only qbmodel interface, use this version:  
+https://drive.google.com/file/d/1u2BhKm9jpes9ucfrIC76XBUnNRdEhPS7/view?usp=sharing
 
 Alternatively, run the command to download the model automatically:
 `docker-compose run bert_qb ./cli download_model`
@@ -181,3 +185,6 @@ Run project server only - use any of the commands that you would have used in do
 
 Guesser model download link:
 https://drive.google.com/u/0/uc?export=download&confirm=D8Pf&id=1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj
+
+CPU compatable version:
+https://drive.google.com/file/d/1u2BhKm9jpes9ucfrIC76XBUnNRdEhPS7/view?usp=sharing

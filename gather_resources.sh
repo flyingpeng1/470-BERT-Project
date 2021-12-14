@@ -1,1 +1,3 @@
 python3 Drive_download.py 1XDTvJyHEozSXlZAAnJHR1FXbFlacgWsj data/QuizBERT.model
+python3 Drive_download.py 1u2BhKm9jpes9ucfrIC76XBUnNRdEhPS7 data/QuizBERT.torchmodel
+python3 Drive_download.py 1Bnd4a4P2MGCHaum_dGnWM18KNHQI7AKD data/wiki_links.csv
