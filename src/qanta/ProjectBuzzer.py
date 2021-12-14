@@ -41,19 +41,17 @@ class Sample:
         features.append(sum(temp)/len(temp))
         # question length
         features.append(q_length)
-
+        # score X length
+        features.append(score * q_length)
+        # disambiguation
+        if '(' in guess and ')' in guess:
+            features.append(float(guess[guess.find("(")+1:guess.find(")")] in q_text))
+        else:
+            features.append(0.0)
         # wiki links
         features.append(give_confidence(guess, q_text, df))
         features.append(0)
 
-        # score X length
-        # features.append(score * q_length)
-
-        # disambiguation
-        # if '(' in guess and ')' in guess:
-        #     features.append(float(guess[guess.find("(")+1:guess.find(")")] in q_text))
-        # else:
-        #     features.append(0.0)
         self.gid = np.array(gid)
         self.x = np.array(features)
         if "label" in guess_data:
@@ -63,7 +61,7 @@ class Sample:
 
 class GuessDataset(Dataset):
     def __init__(self, guess_dataset, df):
-        self.num_features = 6
+        self.num_features = 8
         self.gid = None
         self.feature = None
         self.label = None
